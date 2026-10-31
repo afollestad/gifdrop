@@ -22,13 +22,23 @@ html {
     scroll-padding-top: 1rem;
 }
 
+/* Small viewport units, since the page shouldn't reflow as a phone's toolbars come and go. */
 body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100svh;
     margin: 0;
     font-family: var(--font);
     line-height: 1.5;
     background: var(--bg);
     color: var(--fg);
     -webkit-font-smoothing: antialiased;
+}
+
+main {
+    flex: 1 0 auto;
+    width: 100%;
 }
 
 h1,
@@ -424,6 +434,22 @@ body:not([data-view="empty"]) .hero-copy h1 {
     gap: 1rem;
     min-width: 0;
     contain: layout style;
+}
+
+/* Centered beside the video, which stays put so that starting a conversion moves nothing. */
+body[data-view="converting"] .workspace-side {
+    align-self: center;
+}
+
+/* With the video gone, the result takes the middle of the window. */
+body[data-view="done"] main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+body[data-view="done"] .workspace {
+    align-items: center;
 }
 
 /* Sized from the video's shape as soon as its metadata arrives, so nothing moves when
