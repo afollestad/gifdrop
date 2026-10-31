@@ -13,6 +13,7 @@ const els = {
     playToggle: byId('play-toggle'),
     unblockPanel: byId('unblock-panel'),
     trimTrack: byId('trim-track'),
+    trimSelection: byId('trim-selection'),
     trimStart: byId('trim-start'),
     trimEnd: byId('trim-end'),
     trimStartText: byId('trim-start-text'),

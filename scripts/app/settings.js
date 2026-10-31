@@ -43,6 +43,13 @@ export function clampTrim(settings, duration, moved) {
     return { ...settings, trimStart, trimEnd };
 }
 
+// Moves the trim to a new start, keeping its length and staying inside the video.
+export function slideTrim(settings, trimStart, duration) {
+    const length = settings.trimEnd - settings.trimStart;
+    const start = Math.max(0, Math.min(trimStart, duration - length));
+    return { ...settings, trimStart: start, trimEnd: Math.min(start + length, duration) };
+}
+
 // `aspect` is 'original', 'free', or width over height as a string.
 export function withAspect(settings, aspect, { videoWidth, videoHeight }) {
     const ratio = Number(aspect);

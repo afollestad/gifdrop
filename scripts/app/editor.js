@@ -10,7 +10,7 @@ import { convert } from './converter.js';
 import { estimate } from './estimator.js';
 import { formatBytes, formatTime } from './format.js';
 import { convertErrorMessage, HDR_NOTICE, HIDDEN_TAB_MESSAGE, loadErrorMessage, UNREADABLE_END_NOTICE } from './messages.js';
-import { aspectNumber, clampTrim, deriveOutput, initialSettings, playbackSeconds, widthLimit, withAspect, withCrop, withOutputWidth } from './settings.js';
+import { aspectNumber, clampTrim, deriveOutput, initialSettings, playbackSeconds, slideTrim, widthLimit, withAspect, withCrop, withOutputWidth } from './settings.js';
 import { VideoSession } from './video-session.js';
 
 const ESTIMATE_DELAY_MS = 500;
@@ -31,6 +31,7 @@ export function createEditor({ els, dispatch, status, prefersReducedMotion }) {
 
     const trim = createTrim({
         track: els.trimTrack,
+        selection: els.trimSelection,
         startRange: els.trimStart,
         endRange: els.trimEnd,
         startText: els.trimStartText,
@@ -41,6 +42,15 @@ export function createEditor({ els, dispatch, status, prefersReducedMotion }) {
             settings = clampTrim({ ...settings, trimStart, trimEnd }, session.preview.duration, moved);
             trim.setRange(settings.trimStart, settings.trimEnd);
             session.seekPreview(moved === 'start' ? settings.trimStart : settings.trimEnd);
+            refresh();
+        },
+        onSlide: (trimStart) => {
+            const moved = slideTrim(settings, trimStart, session.preview.duration);
+            if (moved.trimStart === settings.trimStart) return;
+            pausePreview();
+            settings = moved;
+            trim.setRange(settings.trimStart, settings.trimEnd);
+            session.seekPreview(settings.trimStart);
             refresh();
         },
     });

@@ -448,8 +448,12 @@ body[data-view="done"] main {
     justify-content: center;
 }
 
+/* And the GIF and its panel center as a pair, whatever the GIF's width. */
 body[data-view="done"] .workspace {
+    grid-template-columns: minmax(0, max-content) minmax(19rem, 23rem);
+    justify-content: center;
     align-items: center;
+    column-gap: 3rem;
 }
 
 /* Sized from the video's shape as soon as its metadata arrives, so nothing moves when
@@ -600,7 +604,8 @@ body[data-view="done"] .workspace {
 }
 
 /* Two range inputs on one track. Only their thumbs take pointer events, so each stays
-   reachable under the other. The selected stretch is painted from their values. */
+   reachable under the other, and everything between them reaches the selected stretch
+   underneath, which is painted from their values and can be dragged along the track. */
 .trim-track {
     --trim-start: 0;
     --trim-end: 1;
@@ -609,24 +614,50 @@ body[data-view="done"] .workspace {
 }
 
 .trim-track::before,
-.trim-track::after {
+.trim-selection::before {
     content: "";
     position: absolute;
     top: calc(50% - .2rem);
+    left: 0;
+    right: 0;
     height: .4rem;
     border-radius: 999px;
 }
 
 .trim-track::before {
-    left: 0;
-    right: 0;
     background: var(--track);
 }
 
-.trim-track::after {
+/* Vertical swipes still scroll the page. */
+.trim-selection {
+    position: absolute;
+    top: 0;
+    bottom: 0;
     left: calc(var(--trim-start) * 100%);
     width: calc((var(--trim-end) - var(--trim-start)) * 100%);
+    touch-action: pan-y;
+}
+
+.trim-selection::before {
     background: var(--accent);
+}
+
+.trim-selection.is-movable {
+    cursor: grab;
+}
+
+.trim-selection.is-dragging {
+    cursor: grabbing;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .trim-selection.is-movable:hover::before {
+        transform: scaleY(1.5);
+    }
+}
+
+.trim-selection.is-dragging::before {
+    transform: scaleY(1.5);
 }
 
 .trim-range {
@@ -1134,7 +1165,7 @@ progress::-moz-progress-bar {
         forced-color-adjust: none;
     }
 
-    .trim-track::after {
+    .trim-selection::before {
         background: Highlight;
     }
 }
@@ -1145,8 +1176,19 @@ progress::-moz-progress-bar {
         scroll-padding-bottom: 7rem;
     }
 
-    .workspace {
+    .workspace,
+    body[data-view="done"] .workspace {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* A tall video can fill the screen, so progress goes above it to stay in view, and
+       the trim, which can't be used until this finishes, makes way. */
+    body[data-view="converting"] .workspace-side {
+        order: -1;
+    }
+
+    body[data-view="converting"] .trim {
+        display: none;
     }
 
     /* The GIF comes first, with nothing left of the stage above it. */

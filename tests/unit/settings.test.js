@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { aspectNumber, clampTrim, deriveOutput, initialSettings, playbackSeconds, widthLimit, withAspect, withCrop, withOutputWidth } from '../../scripts/app/settings.js';
+import { aspectNumber, clampTrim, deriveOutput, initialSettings, playbackSeconds, slideTrim, widthLimit, withAspect, withCrop, withOutputWidth } from '../../scripts/app/settings.js';
 import { planFrames } from '../../scripts/app/plan.js';
 
 const LANDSCAPE = { videoWidth: 1920, videoHeight: 1080, duration: 20 };
@@ -47,6 +47,13 @@ test('clampTrim copes with a clip shorter than one frame', () => {
     const clamped = clampTrim({ fps: 8, speed: 4, trimStart: 0, trimEnd: 0.1 }, 0.1, 'start');
     assert.equal(clamped.trimStart, 0);
     assert.equal(clamped.trimEnd, 0.1);
+});
+
+test('slideTrim keeps the length and stays inside the video', () => {
+    const settings = { trimStart: 2, trimEnd: 7 };
+    assert.deepEqual(slideTrim(settings, 5, 20), { trimStart: 5, trimEnd: 10 });
+    assert.deepEqual(slideTrim(settings, -3, 20), { trimStart: 0, trimEnd: 5 });
+    assert.deepEqual(slideTrim(settings, 30, 20), { trimStart: 15, trimEnd: 20 });
 });
 
 test('withAspect centers a crop and can only bring the width down', () => {

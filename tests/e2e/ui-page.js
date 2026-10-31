@@ -229,6 +229,53 @@ const TESTS = {
         equal(Number(end.value), 0.5, 'the dragged end wins');
     },
 
+    async 'the trimmed stretch can be dragged, keeping its length'(app) {
+        pick(app, await fixture('barcode.mp4'));
+        await waitForEditing(app);
+        setField(app, app.byId('trim-end-text'), '0:01.0');
+        const selection = app.byId('trim-selection');
+        const rect = selection.getBoundingClientRect();
+        const y = rect.top + rect.height / 2;
+        const x = rect.left + rect.width / 2;
+        equal(app.doc.elementFromPoint(x, y), selection, 'reachable through the handles\' inputs');
+        const perSecond = app.byId('trim-track').getBoundingClientRect().width / Number(app.byId('trim-end').max);
+        const fire = (type, clientX, pointerId = 1) => selection.dispatchEvent(new app.win.PointerEvent(type, { bubbles: true, cancelable: true, clientX, clientY: y, button: 0, pointerId, pointerType: 'mouse' }));
+        // Real pointer capture needs a real pointer, so a synthetic one is allowed to refuse.
+        selection.setPointerCapture = () => {};
+        selection.releasePointerCapture = () => {};
+        selection.hasPointerCapture = () => false;
+        const slide = (to, end) => {
+            fire('pointerdown', x);
+            fire('pointermove', x + to * perSecond);
+            fire(end, x + to * perSecond);
+        };
+
+        fire('pointerdown', x);
+        fire('pointermove', x + perSecond / 2);
+        await new Promise((done) => app.win.requestAnimationFrame(done));
+        equal(app.byId('trim-start-text').value, '0:00.5', 'follows along during the drag');
+        fire('pointerup', x + perSecond / 2);
+
+        slide(0.5, 'pointerup');
+        equal(app.byId('trim-start-text').value, '0:01.0', 'moved along');
+        equal(app.byId('trim-end-text').value, '0:02.0', 'the end comes with it');
+        equal(app.byId('trim-length').textContent, '0:01.0 selected', 'same length');
+
+        fire('pointerdown', x);
+        fire('pointermove', x + perSecond, 2);
+        fire('pointerup', x + perSecond, 2);
+        equal(app.byId('trim-start-text').value, '0:01.0', 'another pointer has no say');
+        fire('pointercancel', x);
+
+        slide(100, 'pointerup');
+        equal(Number(app.byId('trim-end').value), Number(app.byId('trim-end').max), 'stops at the end');
+        equal(app.byId('trim-length').textContent, '0:01.0 selected', 'still the same length');
+
+        const before = app.byId('trim-start').value;
+        slide(-100, 'pointercancel');
+        equal(app.byId('trim-start').value, before, 'a cancelled drag changes nothing');
+    },
+
     async 'trim times can be typed, and bad ones are rejected'(app) {
         pick(app, await fixture('barcode.mp4'));
         await waitForEditing(app);

@@ -1,6 +1,6 @@
 # gifdrop.af.codes
 
-A video-to-GIF site that does everything in the browser. `main` is the published site: GitHub Pages serves the repo root through Jekyll, so anything committed here can go live unless `_config.yml` excludes it. There's no build step. Preview with a local static server rather than opening the file directly, since module scripts and workers need one.
+A video-to-GIF site that does everything in the browser. `main` is the published site: GitHub Pages serves the repo root through Jekyll, so anything committed here can go live unless `_config.yml` excludes it. There's no build step. Preview with a local static server rather than opening the file directly, since module scripts and workers need one. Safari can keep using old files from a server that sends no cache headers, so have it send `Cache-Control: no-store`.
 
 ## Keep this file and the README up to date
 
