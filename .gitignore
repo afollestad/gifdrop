@@ -1,0 +1,11 @@
+.DS_Store
+
+.claude/*
+!.claude/skills
+!.claude/checks
+.codex/*
+!.codex/skills
+!.codex/checks
+
+tests/fixtures/
+tests/e2e/out/

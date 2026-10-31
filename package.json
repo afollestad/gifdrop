@@ -1,0 +1,10 @@
+{
+    "name": "gifdrop",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "fixtures": "tests/make-fixtures.sh",
+        "test": "node --test \"tests/unit/*.test.js\"",
+        "test:e2e": "node tests/e2e/capture.mjs"
+    }
+}

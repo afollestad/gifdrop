@@ -1,0 +1,12 @@
+# Names files outright, since Jekyll's "**/*.md" doesn't match the repo root.
+exclude:
+  - .agents/
+  - .codex/
+  - .claude/
+  - .github/
+  - tests/
+  - package.json
+  - AGENTS.md
+  - CLAUDE.md
+  - README.md
+  - LICENSE.md

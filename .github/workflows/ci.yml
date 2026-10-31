@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - name: Test
+        run: npm test
+
+  fixtures:
+    name: Generate fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Generate
+        run: npm run fixtures
+
+      - name: Upload fixtures
+        uses: actions/upload-artifact@v7
+        with:
+          name: fixtures
+          path: tests/fixtures
+          retention-days: 1
+
+  e2e:
+    name: E2E (${{ matrix.browser }})
+    needs: fixtures
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chrome
+            os: ubuntu-latest
+          - browser: firefox
+            os: ubuntu-latest
+          - browser: safari
+            os: macos-latest
+          - browser: ios
+            os: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - name: Download fixtures
+        uses: actions/download-artifact@v8
+        with:
+          name: fixtures
+          path: tests/fixtures
+
+      # Firefox on Linux decodes H.264 through the system's libavcodec.
+      - name: Install codecs
+        if: matrix.browser == 'firefox'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Test
+        run: npm run test:e2e -- ${{ matrix.browser }}
+
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-reports-${{ matrix.browser }}
+          path: tests/e2e/out
+          if-no-files-found: ignore
+          retention-days: 7
