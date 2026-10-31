@@ -85,6 +85,51 @@ test('buildPalette keeps pure black and white from gray averages', () => {
     assert.ok(palette.slice(1).some(([r, g, b]) => r + g + b === 765), JSON.stringify(palette));
 });
 
+test('buildPalette serves very different scenes, not just the most common colors', () => {
+    const scene = (r, g, b) => makeFrame((x, y) => [r + x, g + y, b + ((x + y) % 16)]);
+    const histogram = new ColorHistogram();
+    // One scene is nearly all of the footage, and two others are brief.
+    for (let i = 0; i < 40; i++) histogram.addFrame(scene(10, 10, 10), WIDTH, HEIGHT, 1);
+    histogram.addFrame(scene(190, 20, 30), WIDTH, HEIGHT, 1);
+    histogram.addFrame(scene(20, 190, 170), WIDTH, HEIGHT, 1);
+    const { palette, rmsError } = buildPalette(histogram, 32);
+    const near = (target) => palette.slice(1).some(([r, g, b]) => Math.abs(r - target[0]) + Math.abs(g - target[1]) + Math.abs(b - target[2]) < 90);
+    assert.ok(near([210, 40, 40]), 'keeps the brief red scene');
+    assert.ok(near([40, 210, 180]), 'keeps the brief green scene');
+    assert.ok(rmsError < 8, `rms ${rmsError}`);
+});
+
+test('dithering breaks up the bands a small palette would leave', () => {
+    const ramp = makeFrame((x) => [x * 2 + 60, x * 2 + 60, x * 2 + 60]);
+    const histogram = new ColorHistogram();
+    histogram.addFrame(ramp, WIDTH, HEIGHT, 1);
+    const { palette, rmsError } = buildPalette(histogram, 4);
+    const remapper = new FrameRemapper({ width: WIDTH, height: HEIGHT, palette, rmsError, ditherScale: 2, tolerance: 5 });
+    remapper.remap(ramp);
+    // Without dithering, each row of a horizontal ramp would be the same as the last.
+    let rowsDiffering = 0;
+    for (let y = 1; y < HEIGHT; y++) {
+        for (let x = 0; x < WIDTH; x++) {
+            if (remapper.composite[y * WIDTH + x] !== remapper.composite[(y - 1) * WIDTH + x]) {
+                rowsDiffering++;
+                break;
+            }
+        }
+    }
+    assert.ok(rowsDiffering > HEIGHT / 2, `${rowsDiffering} rows differ`);
+});
+
+test('a change that lands on the color already showing writes nothing', () => {
+    const flat = (level) => makeFrame(() => [level, level, level]);
+    const histogram = new ColorHistogram();
+    histogram.addFrame(flat(60), WIDTH, HEIGHT, 1);
+    histogram.addFrame(flat(220), WIDTH, HEIGHT, 1);
+    const { palette } = buildPalette(histogram, 2);
+    const remapper = new FrameRemapper({ width: WIDTH, height: HEIGHT, palette, rmsError: 0, ditherScale: 2, tolerance: 1 });
+    remapper.remap(flat(60));
+    assert.equal(remapper.remap(flat(90)), 0);
+});
+
 test('buildPalette copes with an empty histogram', () => {
     assert.ok(buildPalette(new ColorHistogram(), 255).palette.length >= 2);
 });
@@ -126,6 +171,19 @@ test('later frames only write what changed', () => {
     const written = gif.frames[1].indices.filter((index) => index !== TRANSPARENT_INDEX).length;
     assert.ok(written > 0);
     assert.ok(written < WIDTH * HEIGHT / 4, `wrote ${written}`);
+});
+
+test('changes under the tolerance are skipped, and over it are written', () => {
+    const shifted = (level) => makeFrame((x, y) => [x * 4 + level, y * 5 + level, 128 + level]);
+    assert.equal(encode([shifted(0), shifted(1)], { tolerance: 5 }).gif.frames.length, 1);
+    const lowTolerance = encode([shifted(0), shifted(12)], { tolerance: 1 }).gif;
+    assert.equal(lowTolerance.frames.length, 2);
+});
+
+test('a small change after a big one is measured from the big one', () => {
+    const flat = (level) => makeFrame(() => [level, level, level]);
+    const { gif } = encode([flat(20), flat(200), flat(201)], { tolerance: 5 });
+    assert.equal(gif.frames.length, 2);
 });
 
 test('tiny changes do not add up unnoticed', () => {
@@ -181,9 +239,17 @@ test('a boomerang return trip reuses the outbound delays', () => {
 });
 
 test('a boomerang with merged frames holds them on both trips', () => {
-    const a = movingSquare(0);
-    const { gif } = encode([a, a, movingSquare(1), movingSquare(2)], { loop: 'boomerang', delay: 5 });
-    assert.deepEqual(gif.frames.map((frame) => frame.delay), [10, 5, 5, 5]);
+    const held = movingSquare(1);
+    const { gif } = encode([movingSquare(0), held, held, movingSquare(2), movingSquare(3)], { loop: 'boomerang', delay: 5 });
+    assert.deepEqual(gif.frames.map((frame) => frame.delay), [5, 10, 5, 5, 5, 10]);
+});
+
+test('a boomerang return trip only writes what changed', () => {
+    const { gif } = encode([0, 1, 2, 3].map(movingSquare), { loop: 'boomerang' });
+    for (const frame of gif.frames.slice(4)) {
+        const written = frame.indices.filter((index) => index !== TRANSPARENT_INDEX).length;
+        assert.ok(written > 0 && written < WIDTH * HEIGHT / 4, `wrote ${written}`);
+    }
 });
 
 test('boomerangs of one or two distinct frames have no return trip to add', () => {

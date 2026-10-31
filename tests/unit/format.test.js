@@ -44,6 +44,11 @@ test('formatBytes picks a sensible unit', () => {
     assert.equal(formatBytes(1.5 * 1024 * 1024), '1.5 MB');
 });
 
+test('formatBytes moves up a unit when rounding would reach the next one', () => {
+    assert.equal(formatBytes(1023.6), '1 KB');
+    assert.equal(formatBytes(1024 * 1023.9), '1.0 MB');
+});
+
 test('formatByteRange only repeats the unit when it differs', () => {
     const mb = 1024 * 1024;
     assert.equal(formatByteRange(1.4 * mb, 1.9 * mb), '1.4–1.9 MB');

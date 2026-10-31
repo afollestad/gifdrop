@@ -68,6 +68,7 @@ function checkBarcodes(gif, result, problems) {
 function checkEstimate(result, problems) {
     const { low, high, exact } = result.estimate;
     if (exact && low !== high) problems.push('an exact estimate gave a range');
+    if (result.expectExact && !exact) problems.push('expected an exact estimate');
     // Safari can decode a frame slightly differently on another pass.
     const lowBound = exact ? low * EXACT_TOLERANCE_LOW : low;
     const highBound = exact ? high * EXACT_TOLERANCE_HIGH : high;

@@ -1,16 +1,11 @@
 // One GIF's encoding, from sampled colors to finished bytes, with no worker or
 // browser dependency so it can be tested on its own. encoder-worker.js only passes
 // messages to it.
-import { GifWriter } from './gif-writer.js';
+import { GifWriter, OutputTooLargeError } from './gif-writer.js';
 import { buildPalette, ColorHistogram } from './palette.js';
 import { FrameRemapper } from './remap.js';
 
-export class OutputTooLargeError extends Error {
-    constructor(maxBytes) {
-        super(`The GIF passed the ${maxBytes} byte limit`);
-        this.name = 'OutputTooLargeError';
-    }
-}
+export { OutputTooLargeError };
 
 export class EncoderJob {
     #config;
@@ -34,11 +29,11 @@ export class EncoderJob {
 
     // Call once, after the last sample and before the first frame.
     buildPalette() {
-        const { width, height, colors, tolerance, ditherScale, loop } = this.#config;
+        const { width, height, colors, tolerance, ditherScale, loop, maxBytes } = this.#config;
         const { palette, rmsError } = buildPalette(this.#histogram, colors);
         this.#histogram = null;
         this.#remapper = new FrameRemapper({ width, height, palette, rmsError, ditherScale, tolerance });
-        this.#writer = new GifWriter({ width, height, palette, loop });
+        this.#writer = new GifWriter({ width, height, palette, loop, maxBytes });
         return palette.length - 1;
     }
 
@@ -46,7 +41,6 @@ export class EncoderJob {
         const remapper = this.#remapper;
         const changed = remapper.remap(rgba);
         this.#writer.addFrame(remapper.indices, remapper.composite, delay, changed);
-        if (this.#writer.bytesWritten > this.#config.maxBytes) throw new OutputTooLargeError(this.#config.maxBytes);
     }
 
     // Returns the GIF as `chunks`, and GifWriter's `frameSizes`.

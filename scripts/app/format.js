@@ -37,8 +37,9 @@ export function spokenTime(seconds) {
 }
 
 export function formatBytes(bytes) {
-    if (bytes < BYTES_PER_UNIT) return `${Math.round(bytes)} B`;
-    if (bytes < BYTES_PER_UNIT ** 2) return `${Math.round(bytes / BYTES_PER_UNIT)} KB`;
+    if (Math.round(bytes) < BYTES_PER_UNIT) return `${Math.round(bytes)} B`;
+    const kilobytes = Math.round(bytes / BYTES_PER_UNIT);
+    if (kilobytes < BYTES_PER_UNIT) return `${kilobytes} KB`;
     return `${(bytes / BYTES_PER_UNIT ** 2).toFixed(1)} MB`;
 }
 

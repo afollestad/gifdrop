@@ -51,6 +51,10 @@ test('presentFallbackMs never cuts a long jump short', () => {
     assert.equal(presentFallbackMs({ distance: 10, recentLatencyMs: 0, hasFrameCallback: true, sameFrameConfirmed: true }), 5000);
 });
 
+test('presentFallbackMs believes a repeated frame on long seeks once gaps are known', () => {
+    assert.equal(presentFallbackMs({ distance: 10, recentLatencyMs: 0, hasFrameCallback: true, sameFrameConfirmed: true, longSeekMisses: 1 }), 40);
+});
+
 test('presentFallbackMs scales with how slow seeks have been', () => {
     assert.equal(presentFallbackMs({ distance: 0.066, recentLatencyMs: 100, hasFrameCallback: true }), 400);
 });
@@ -59,6 +63,18 @@ test('presentFallbackMs waits much longer after a long jump', () => {
     // A jump through a long keyframe interval outlasted 150ms in the iOS Simulator.
     assert.equal(presentFallbackMs({ distance: 10, recentLatencyMs: 0, hasFrameCallback: true }), 5000);
     assert.equal(presentFallbackMs({ distance: 10, recentLatencyMs: 2000, hasFrameCallback: true }), 8000);
+});
+
+test('presentFallbackMs waits less after each long seek that found no new frame', () => {
+    const base = { distance: 10, recentLatencyMs: 0, hasFrameCallback: true };
+    assert.equal(presentFallbackMs({ ...base, longSeekMisses: 0 }), 5000);
+    assert.equal(presentFallbackMs({ ...base, longSeekMisses: 1 }), 1000);
+    assert.equal(presentFallbackMs({ ...base, longSeekMisses: 2 }), 250);
+    assert.equal(presentFallbackMs({ ...base, longSeekMisses: 50 }), 250);
+});
+
+test('presentFallbackMs still allows for seeks known to be slow', () => {
+    assert.equal(presentFallbackMs({ distance: 10, recentLatencyMs: 400, hasFrameCallback: true, longSeekMisses: 5 }), 1600);
 });
 
 test('presentFallbackMs bounds a long jump when no callback can ever arrive', () => {

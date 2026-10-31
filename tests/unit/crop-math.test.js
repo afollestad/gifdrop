@@ -64,6 +64,12 @@ test('resizeCrop holds a fixed aspect from a side, about the center', () => {
     assert.deepEqual(result, { x: 400, y: 355, width: 480, height: 270 });
 });
 
+test('resizeCrop with a fixed aspect keeps the opposite edge exactly in place', () => {
+    const crop = { x: 24, y: 0, width: 31, height: 42 };
+    const moved = resizeCrop(crop, 'nw', -1, 0, 1000, 1000, 3 / 4);
+    assert.equal(moved.x + moved.width, 55);
+});
+
 test('resizeCrop with a fixed aspect stays inside the frame', () => {
     const crop = { x: 100, y: 100, width: 320, height: 180 };
     for (const handle of ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']) {

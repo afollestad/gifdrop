@@ -67,6 +67,20 @@ test('a sample can be smaller than the output', () => {
     assert.ok(job.buildPalette() >= 1);
 });
 
+test('the size limit also covers the last frame and a return trip', () => {
+    const encode = (loop, maxBytes) => {
+        const job = new EncoderJob({ ...CONFIG, loop, maxBytes });
+        for (const level of [0, 80, 160, 240]) job.addSample(frame(level), WIDTH, HEIGHT);
+        job.buildPalette();
+        for (const level of [0, 80, 160, 240]) job.addFrame(frame(level), 5);
+        return job;
+    };
+    const plain = encode('forever', Infinity).finish().bytes;
+    assert.throws(() => encode('forever', plain - 10).finish(), OutputTooLargeError);
+    const boomerang = encode('boomerang', Infinity).finish().bytes;
+    assert.throws(() => encode('boomerang', boomerang - 10).finish(), OutputTooLargeError);
+});
+
 test('going over the size limit stops the job', () => {
     const job = new EncoderJob({ ...CONFIG, maxBytes: 100 });
     job.addSample(frame(0), WIDTH, HEIGHT);

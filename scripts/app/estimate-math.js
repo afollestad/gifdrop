@@ -31,8 +31,8 @@ function returnTripFrames(frames, loop) {
 // `frameSizes` holds the cost of each frame in estimateFrameIndices(frames), the
 // first including the header and palette. Returns the likely range in bytes, and
 // whether it's `exact` because nothing was left out. That's exact for what was
-// encoded: Safari can decode the same frame slightly differently on another pass, so
-// a real conversion can still differ by a little.
+// encoded, give or take the few bytes of the file's end and loop block, and Safari can
+// decode the same frame slightly differently on another pass.
 export function estimateSize({ frameSizes, frames, loop }) {
     const returnFrames = returnTripFrames(frames, loop);
     const total = (values) => values.reduce((sum, value) => sum + value, 0);

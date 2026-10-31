@@ -89,9 +89,11 @@ export function resizeCrop(crop, handle, dx, dy, videoWidth, videoHeight, aspect
     const largestWidth = Math.min(roomWidth, roomHeight * aspect);
     const smallestWidth = Math.min(largestWidth, Math.max(MIN_CROP_SIZE, MIN_CROP_SIZE * aspect));
     const fittedWidth = clamp(crop.width * requested, smallestWidth, largestWidth);
-    const fittedHeight = fittedWidth / aspect;
+    // Rounded before placing, so the edge that's meant to stay put does.
+    const finalWidth = Math.round(fittedWidth);
+    const finalHeight = Math.round(fittedWidth / aspect);
 
-    const x = movesW ? right - fittedWidth : movesE ? crop.x : centerX - fittedWidth / 2;
-    const y = movesN ? bottom - fittedHeight : movesS ? crop.y : centerY - fittedHeight / 2;
-    return clampCrop({ x, y, width: fittedWidth, height: fittedHeight }, videoWidth, videoHeight);
+    const x = movesW ? right - finalWidth : movesE ? crop.x : centerX - finalWidth / 2;
+    const y = movesN ? bottom - finalHeight : movesS ? crop.y : centerY - finalHeight / 2;
+    return clampCrop({ x, y, width: finalWidth, height: finalHeight }, videoWidth, videoHeight);
 }

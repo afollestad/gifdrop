@@ -22,5 +22,5 @@ export const CONVERT_CASES = [
     { name: 'one unchanging picture', src: 'still.mp4', noBarcode: true, expectFrames: 1 },
     { name: 'realistic footage', src: 'motion.mp4', noBarcode: true, estimate: true },
     { name: 'realistic boomerang', src: 'motion.mp4', noBarcode: true, estimate: true, loop: 'boomerang', trimEnd: 4 },
-    { name: 'short clip estimated exactly', src: 'motion.mp4', noBarcode: true, estimate: true, trimEnd: 2 },
+    { name: 'short clip estimated exactly', src: 'motion.mp4', noBarcode: true, estimate: true, trimEnd: 2, expectExact: true },
 ];

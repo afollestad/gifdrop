@@ -33,6 +33,10 @@ encode -f lavfi -i "$(barcode 640x360 40 4)" -vf "select='lt(n,80)',setpts='if(l
 # 2 + (n - 20)/30 after it. Seeks learn a slow rate first, then have to keep up.
 encode -f lavfi -i "$(barcode 640x360 40 4)" -vf "select='lt(n,80)',setpts='if(lt(N,20),3*N,60+(N-20))'" -fps_mode passthrough "${X264[@]}" -g 30 barcode-vfr-faster.mp4
 
+# A slideshow, with a new picture every 2 seconds, like a screen recording of a still
+# screen: frame n shows at 2n seconds, carrying frame number n.
+encode -f lavfi -i "$(barcode 640x360 40 1)" -vf "select='lt(n,8)',setpts='60*N'" -fps_mode passthrough "${X264[@]}" barcode-sparse.mp4
+
 # Displayed 360x640 through container metadata only; the stored frames are
 # untouched, so the barcode reads along the height, its first bit at the bottom.
 encode -display_rotation 90 -i barcode.mp4 -c copy barcode-rotated.mp4

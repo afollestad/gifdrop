@@ -13,7 +13,15 @@ const DISPOSE_KEEP = 1;
 const REPEAT_FOREVER = 0;
 const REPEAT_ONCE = -1;
 
+export class OutputTooLargeError extends Error {
+    constructor(maxBytes) {
+        super(`The GIF passed the ${maxBytes} byte limit`);
+        this.name = 'OutputTooLargeError';
+    }
+}
+
 export class GifWriter {
+    #maxBytes;
     #width;
     #height;
     #palette;
@@ -36,7 +44,8 @@ export class GifWriter {
     #pictures = [];
     #pictureDelays = [];
 
-    constructor({ width, height, palette, loop }) {
+    constructor({ width, height, palette, loop, maxBytes = Infinity }) {
+        this.#maxBytes = maxBytes;
         this.#width = width;
         this.#height = height;
         this.#palette = palette;
@@ -131,6 +140,7 @@ export class GifWriter {
         });
         this.#framesWritten++;
         this.#takeChunk();
+        if (this.#bytesWritten > this.#maxBytes) throw new OutputTooLargeError(this.#maxBytes);
     }
 
     #takeChunk() {

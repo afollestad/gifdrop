@@ -56,7 +56,7 @@ function settingsFor(testCase, video) {
 }
 
 async function runCase(testCase, index) {
-    const result = { name: testCase.name, index, noBarcode: Boolean(testCase.noBarcode), axis: testCase.axis, expectFrames: testCase.expectFrames };
+    const result = { name: testCase.name, index, noBarcode: Boolean(testCase.noBarcode), axis: testCase.axis, expectFrames: testCase.expectFrames, expectExact: testCase.expectExact };
     const { video, url, close } = await openFixture(testCase.src ?? 'barcode.mp4');
     try {
         await loadVideo(video, url);

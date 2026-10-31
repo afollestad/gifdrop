@@ -10,10 +10,12 @@ const LATENCY_MARGIN = 4;
 const LATENCY_DECAY = 0.9;
 
 // Beyond this a seek is taken to have left the frame showing, since no ordinary
-// frame rate holds a frame this long. Only variable frame rate video can, and
-// that only costs time, not accuracy.
+// frame rate holds a frame this long. Only variable frame rate video can, such as a
+// screen recording of a still screen, where a jump can land in the same frame and get
+// no callback at all. So each long seek that ends without one waits less than the
+// last, or a still clip would spend seconds on every jump.
 const LONG_SEEK = 0.25;
-const LONG_SEEK_FALLBACK_MS = 5000;
+const LONG_SEEK_FALLBACKS_MS = [5000, 1000, 250];
 const NO_CALLBACK_LONG_SEEK_FALLBACK_MS = 1000;
 
 // The offset keeps the seek off a frame boundary, where rounding could land on
@@ -45,11 +47,20 @@ export function confirmsSameFrame(mediaTime, shownMediaTime, seeked) {
 // A seek within one frame may never get a callback, so there has to be a limit,
 // but `seeked` can lead the paint by however long decoding takes: a long jump
 // through a long keyframe interval takes far more than a short hop.
-export function presentFallbackMs({ distance, recentLatencyMs, hasFrameCallback, sameFrameConfirmed = false }) {
-    if (distance <= LONG_SEEK && sameFrameConfirmed) return Math.max(SAME_FRAME_CONFIRMED_MS, recentLatencyMs);
+// `longSeekMisses` counts long seeks that ended without a new frame. One means this video
+// has long gaps, so a repeat of the frame showing can be believed on long seeks too. The
+// first is never shortened, since a file cut off partway looks just the same.
+export function presentFallbackMs({ distance, recentLatencyMs, hasFrameCallback, sameFrameConfirmed = false, longSeekMisses = 0 }) {
+    if (sameFrameConfirmed && (!isLongSeek(distance) || longSeekMisses > 0)) return Math.max(SAME_FRAME_CONFIRMED_MS, recentLatencyMs);
     const shortWait = Math.max(SAME_FRAME_FALLBACK_MS, recentLatencyMs * LATENCY_MARGIN);
-    if (distance <= LONG_SEEK) return shortWait;
-    return Math.max(shortWait, hasFrameCallback ? LONG_SEEK_FALLBACK_MS : NO_CALLBACK_LONG_SEEK_FALLBACK_MS);
+    if (!isLongSeek(distance)) return shortWait;
+    if (!hasFrameCallback) return Math.max(shortWait, NO_CALLBACK_LONG_SEEK_FALLBACK_MS);
+    const longWait = LONG_SEEK_FALLBACKS_MS[Math.min(longSeekMisses, LONG_SEEK_FALLBACKS_MS.length - 1)];
+    return Math.max(shortWait, longWait);
+}
+
+export function isLongSeek(distance) {
+    return distance > LONG_SEEK;
 }
 
 // Tracks the slowest recent seek, fading so one slow seek doesn't slow the rest.

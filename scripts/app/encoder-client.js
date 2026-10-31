@@ -23,14 +23,18 @@ export class EncoderClient {
     #creditWaiters = [];
     #failure = null;
     #bytes = 0;
+    #started = false;
 
     constructor() {
         this.#worker = new Worker(new URL('../worker/encoder-worker.js', import.meta.url), { type: 'module' });
         this.#worker.onmessage = ({ data }) => this.#onMessage(data);
         this.#worker.onerror = (event) => {
             event.preventDefault();
-            this.#fail(new EncoderError('memory', event.message || 'The encoder stopped'));
+            // Before its first reply it can only have failed to load, which more memory
+            // wouldn't fix.
+            this.#fail(new EncoderError(this.#started ? 'memory' : 'internal', event.message || 'The encoder stopped'));
         };
+        this.#worker.onmessageerror = () => this.#fail(new EncoderError('internal', 'A message from the encoder could not be read'));
     }
 
     #onMessage(data) {
@@ -38,6 +42,7 @@ export class EncoderClient {
             this.#fail(new EncoderError(data.reason, data.message));
             return;
         }
+        this.#started = true;
         if (data.bytes !== undefined) this.#bytes = data.bytes;
         this.#replies.shift()?.resolve(data);
     }

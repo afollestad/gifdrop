@@ -3,27 +3,9 @@
 // frame, and retries a stalled seek once.
 import { FrameReader } from './frame-reader.js';
 import { seekTarget } from './seek-policy.js';
-import { captureAbortedError, SeekStalledError, VideoSeeker } from './video-seeker.js';
+import { SeekStalledError, VideoSeeker, whenVisible } from './video-seeker.js';
 
 const RETRY_OFFSET = 0.005;
-
-function whenVisible(signal) {
-    if (signal?.aborted) return Promise.reject(captureAbortedError());
-    if (!document.hidden) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-        const finish = (settle) => {
-            document.removeEventListener('visibilitychange', onChange);
-            signal?.removeEventListener('abort', onAbort);
-            settle();
-        };
-        const onChange = () => {
-            if (!document.hidden) finish(resolve);
-        };
-        const onAbort = () => finish(() => reject(captureAbortedError()));
-        document.addEventListener('visibilitychange', onChange);
-        signal?.addEventListener('abort', onAbort);
-    });
-}
 
 export class FrameGrabber {
     #video;
@@ -80,7 +62,7 @@ export class FrameGrabber {
             try {
                 await this.#seeker.seek(seekTarget(time + RETRY_OFFSET, duration));
             } catch (retryError) {
-                if (retryError instanceof SeekStalledError) throw new SeekStalledError(time);
+                if (retryError instanceof SeekStalledError) throw new SeekStalledError(time, this.#video);
                 throw retryError;
             }
         }
