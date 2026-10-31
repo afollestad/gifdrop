@@ -9,7 +9,7 @@ import { startServer } from './server.mjs';
 
 const REPORT_TIMEOUT_MS = 480000;
 const OUT = join(dirname(fileURLToPath(import.meta.url)), 'out');
-const PASSING = new Set(['pass', 'unsupported']);
+const PASSING = new Set(['pass', 'unsupported', 'flagged']);
 
 function describe(result) {
     if (result.error) return result.error;

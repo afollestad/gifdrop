@@ -43,4 +43,9 @@ encode -f lavfi -i "$(barcode 640x360 40 4)" -c:v libvpx-vp9 -crf 12 -b:v 0 -dea
 encode -f lavfi -i "sine=frequency=440:duration=2" -c:a aac audio-only.m4a
 head -c 4096 barcode.mp4 > truncated.mp4
 
+# Its index comes first, so it loads, then runs out of frames halfway through.
+encode -f lavfi -i "$(barcode 640x360 40 4)" "${X264[@]}" -g 30 -movflags +faststart barcode-whole.mp4
+head -c "$(( $(wc -c < barcode-whole.mp4) / 2 ))" barcode-whole.mp4 > barcode-cutoff.mp4
+rm barcode-whole.mp4
+
 echo "Fixtures written to $(pwd)"

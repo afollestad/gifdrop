@@ -3,6 +3,7 @@
 // time they were asked for. No gesture is involved, so this also shows whether
 // an untouched video paints on iOS.
 import { FrameGrabber } from '/scripts/app/frame-grabber.js';
+import { canSeekNearEnd } from '/scripts/app/video-seeker.js';
 import { loadVideo, releaseVideo, resumeBlockedLoad, VideoLoadError } from '/scripts/app/video-source.js';
 import { readBarcode } from '/tests/barcode.js';
 import { CAPTURE_CASES, REJECTED_FILES } from '/tests/e2e/capture-cases.js';
@@ -90,6 +91,22 @@ async function runCase(testCase) {
 
         if (preview) result.previewPlaying = await startPreview(preview, url);
 
+        // Checked first where it decides whether the frames mean anything, and after
+        // capturing otherwise, so the first capture still follows a fresh load.
+        if (testCase.mayNotSeek || testCase.mustNotSeek) {
+            const reachable = await canSeekNearEnd(video);
+            if (!reachable) {
+                result.status = 'flagged';
+                result.error = 'Flagged as not readable to the end';
+                return result;
+            }
+            if (testCase.mustNotSeek) {
+                result.status = 'FAIL';
+                result.error = 'Not flagged, though the file stops partway';
+                return result;
+            }
+        }
+
         const outputWidth = testCase.outputWidth ?? 320;
         const makeGrabber = () => new FrameGrabber(video, {
             crop: { x: 0, y: 0, width: video.videoWidth, height: video.videoHeight },
@@ -109,7 +126,9 @@ async function runCase(testCase) {
         result.wrongSample = wrong.slice(0, 8);
         result.capturedPerSecond = Number((grabber.stats.frames / (elapsed / 1000)).toFixed(1));
         result.stats = grabber.stats;
-        result.status = wrong.length === 0 && sizeOk ? 'pass' : 'FAIL';
+        const flaggedWrongly = !testCase.mayNotSeek && !(await canSeekNearEnd(video));
+        if (flaggedWrongly) result.error = 'Flagged as not readable to the end';
+        result.status = wrong.length === 0 && sizeOk && !flaggedWrongly ? 'pass' : 'FAIL';
     } catch (error) {
         const unsupported = testCase.optionalCodec && error instanceof VideoLoadError && UNSUPPORTED_REASONS.has(error.reason);
         result.status = unsupported ? 'unsupported' : 'ERROR';

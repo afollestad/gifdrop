@@ -2,6 +2,10 @@
 // legitimately not decode, such as HEVC on Linux or VP9 in the iOS Simulator, so
 // failing to load it is reported as unsupported rather than as a failure. H.264
 // has no such pass.
+//
+// Every video must pass canSeekNearEnd unless `mayNotSeek` says a browser can
+// legitimately fail it, in which case it's flagged and its frames aren't checked,
+// and `mustNotSeek` requires that outcome.
 
 const at30 = (t) => Math.floor(t * 30);
 
@@ -29,7 +33,8 @@ export const CAPTURE_CASES = [
     { name: 'large downscale', src: 'barcode.mp4', fps: 15, outputWidth: 96 },
     { name: 'beside a playing preview', src: 'barcode.mp4', fps: 15, withPreview: true },
     { name: 'without frame callbacks', src: 'barcode.mp4', fps: 15, start: 1, noFrameCallback: true },
-    { name: 'no duration webm', src: 'barcode-noduration.webm', fps: 15, optionalCodec: true },
+    { name: 'no duration webm', src: 'barcode-noduration.webm', fps: 15, optionalCodec: true, mayNotSeek: true },
+    { name: 'cut off partway', src: 'barcode-cutoff.mp4', fps: 15, mustNotSeek: true },
     { name: 'play refused while loading', src: 'barcode.mp4', fps: 15, start: 1, refusePlay: true },
 ];
 

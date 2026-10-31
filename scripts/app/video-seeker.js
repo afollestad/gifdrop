@@ -2,11 +2,12 @@
 // `seeked` alone isn't enough, since Safari and iOS can paint after it, and
 // requestVideoFrameCallback alone isn't either, since a seek that lands on the
 // frame already showing may never fire it. seek-policy.js decides between them.
-import { nextRecentLatency, presentFallbackMs, showsNewFrame } from './seek-policy.js';
+import { nextRecentLatency, presentFallbackMs, seekTarget, showsNewFrame } from './seek-policy.js';
 
 const SEEK_WATCHDOG_MS = 15000;
 const INITIAL_FRAME_WAIT_MS = 150;
 const HAVE_CURRENT_DATA = 2;
+const NEAR_END_SHARE = 0.9;
 
 export class SeekStalledError extends Error {
     constructor(time) {
@@ -166,4 +167,22 @@ export class VideoSeeker {
             video.currentTime = target;
         });
     }
+}
+
+// Whether seeking really reaches the end of this video. A file cut off partway, or
+// WebM with no seek index in Firefox, reports `seeked` and its whole length as
+// seekable while still showing an earlier frame, so the only sign is that no new
+// frame arrives. A video that barely changes can also fail this, so it's for a
+// warning rather than for refusing the file. Browsers without frame callbacks can't
+// tell.
+export async function canSeekNearEnd(video) {
+    if (!video.requestVideoFrameCallback) return true;
+    const seeker = new VideoSeeker(video);
+    try {
+        await seeker.seek(seekTarget(video.duration * NEAR_END_SHARE, video.duration));
+    } catch (error) {
+        if (error instanceof SeekStalledError || error instanceof VideoDecodeError) return false;
+        throw error;
+    }
+    return seeker.presentFallbacks === 0;
 }
