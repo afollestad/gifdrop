@@ -63,7 +63,9 @@ function dragEvent(win, type, dataTransfer) {
 
 async function drop({ win, doc, byId }, files) {
     const dataTransfer = transferOf(win, files);
-    win.dispatchEvent(dragEvent(win, 'dragenter', dataTransfer));
+    const entered = dragEvent(win, 'dragenter', dataTransfer);
+    win.dispatchEvent(entered);
+    assert(entered.defaultPrevented, 'entering should claim the drag, or WebKit can navigate on a quick drop');
     assert(!byId('drop-overlay').hidden, 'the overlay should show during a drag');
     const dropped = dragEvent(win, 'drop', dataTransfer);
     byId('drop-overlay').dispatchEvent(dropped);
@@ -180,7 +182,9 @@ const TESTS = {
     async 'a non-file drag is left alone'(app) {
         const dataTransfer = new app.win.DataTransfer();
         dataTransfer.setData('text/plain', 'hello');
-        app.win.dispatchEvent(dragEvent(app.win, 'dragenter', dataTransfer));
+        const entered = dragEvent(app.win, 'dragenter', dataTransfer);
+        app.win.dispatchEvent(entered);
+        assert(!entered.defaultPrevented, 'not claimed on entering');
         assert(app.byId('drop-overlay').hidden, 'no overlay for text');
         const over = dragEvent(app.win, 'dragover', dataTransfer);
         app.win.dispatchEvent(over);

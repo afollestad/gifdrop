@@ -14,7 +14,7 @@ After changing files, architecture, conventions or behavior, check whether this 
 
 ## Publishing
 
-`_config.yml` names root files outright, because Jekyll's `**/*.md` doesn't match the repo root: af.codes has that pattern and serves its `AGENTS.md` and `README.md`. `LICENSE.md` must never be published, while `vendor/gifenc/LICENSE.txt` must be, since the MIT license requires it, which is why that one isn't Markdown. When adding anything at the root that isn't part of the site, add it to `exclude`.
+`_config.yml` names root files outright, because Jekyll's `**/*.md` doesn't match the repo root. `LICENSE.md` must never be published, while `vendor/gifenc/LICENSE.txt` must be, since the MIT license requires it, which is why that one isn't Markdown. When adding anything at the root that isn't part of the site, add it to `exclude`.
 
 ## Look and theming
 
@@ -66,6 +66,7 @@ Each of these was measured, and the code's comments say why. Don't simplify them
 - **gifenc** needs `dispose: 1` on every frame, since transparency defaults to clearing the canvas, and a palette only on the first frame, since later ones would each write a local table.
 - **Tests use object URLs**, as the app does, since browsers can load those differently from a server's.
 - **Each session gets new `<video>` elements.** An earlier session's unfinished seek would otherwise land on the next video while it loads, which hung it on iOS.
+- **Drops:** `dragenter` must be cancelled as well as `dragover`. WebKit goes by the last one it fired, and showing the overlay changes the target, so otherwise a quick drop navigates to the file. Synthetic events can't show this, since they skip the browser's decision.
 - **Static video:** a jump inside one long frame gets no callback, so long seeks wait less after each miss (`presentFallbackMs`). The first is never shortened, since that's how a cut-off file looks.
 
 ## Testing

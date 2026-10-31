@@ -40,19 +40,26 @@ export function createDropzone({ button, input, overlay, canAccept, onFile, onRe
         overlay.hidden = true;
     }
 
+    // Without this on both events, the browser would navigate away to the dropped file.
+    // WebKit goes by whichever event it fired last, and showing the overlay changes the
+    // target, so a drop can follow a `dragenter` with no `dragover` since.
+    function claimDrag(event) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+    }
+
     window.addEventListener('dragenter', (event) => {
-        if (carriesFiles(event)) overlay.hidden = false;
+        if (!carriesFiles(event)) return;
+        claimDrag(event);
+        overlay.hidden = false;
     });
 
     overlay.addEventListener('dragleave', (event) => {
         if (event.target === overlay) hideOverlay();
     });
 
-    // Without these, the browser would navigate away to the dropped file.
     window.addEventListener('dragover', (event) => {
-        if (!carriesFiles(event)) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'copy';
+        if (carriesFiles(event)) claimDrag(event);
     });
 
     window.addEventListener('drop', (event) => {
