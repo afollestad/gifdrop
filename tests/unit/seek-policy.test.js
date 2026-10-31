@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { confirmsSameFrame, nextRecentLatency, presentFallbackMs, seekTarget, showsNewFrame } from '../../scripts/app/seek-policy.js';
+import { confirmsSameFrame, isLongSeek, nextRecentLatency, presentFallbackMs, retryWaypoint, seekTarget, showsNewFrame } from '../../scripts/app/seek-policy.js';
 
 test('seekTarget stays off frame boundaries and inside the video', () => {
     assert.equal(seekTarget(1, 4), 1.001);
@@ -80,6 +80,17 @@ test('presentFallbackMs still allows for seeks known to be slow', () => {
 test('presentFallbackMs bounds a long jump when no callback can ever arrive', () => {
     assert.equal(presentFallbackMs({ distance: 10, recentLatencyMs: 0, hasFrameCallback: false }), 1000);
     assert.equal(presentFallbackMs({ distance: 0.066, recentLatencyMs: 0, hasFrameCallback: false }), 150);
+});
+
+test('retryWaypoint stops short of the target, on the side the seek came from', () => {
+    assert.equal(retryWaypoint(10, 0), 9.5);
+    assert.equal(retryWaypoint(1, 9), 1.5);
+});
+
+test('retryWaypoint never goes past where the seek came from, and leaves a long seek', () => {
+    assert.equal(retryWaypoint(1, 0.7), 0.7);
+    assert.equal(retryWaypoint(1, 1.3), 1.3);
+    for (const from of [0.7, 1.3, 5]) assert.ok(isLongSeek(Math.abs(1 - retryWaypoint(1, from))));
 });
 
 test('nextRecentLatency holds the slowest seek and fades without a measurement', () => {

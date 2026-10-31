@@ -67,7 +67,7 @@ Each of these was measured, and the code's comments say why. Don't simplify them
 - **Tests use object URLs**, as the app does, since browsers can load those differently from a server's.
 - **Each session gets new `<video>` elements.** An earlier session's unfinished seek would otherwise land on the next video while it loads, which hung it on iOS.
 - **Drops:** `dragenter` must be cancelled as well as `dragover`. WebKit goes by the last one it fired, and showing the overlay changes the target, so otherwise a quick drop navigates to the file. Synthetic events can't show this, since they skip the browser's decision.
-- **Static video:** a jump inside one long frame gets no callback, so long seeks wait less after each miss (`presentFallbackMs`). The first is never shortened, since that's how a cut-off file looks.
+- **Static video:** a jump inside one long frame gets no callback, so long seeks wait less after each miss (`presentFallbackMs`). The first is never shortened, since that's how a cut-off file looks, and it alone gets a retry by way of a nearby position.
 
 ## Testing
 
@@ -88,5 +88,5 @@ Each of these was measured, and the code's comments say why. Don't simplify them
 
 - Files the browser can't decode fail with an error, by design.
 - One palette covers the whole GIF, a compromise on clips with very different scenes. Per-scene palettes would be the upgrade.
-- About one in ten iOS Simulator runs on CI, a long first seek got no new-frame callback within its limit and captured an earlier frame, with no warning. The cause is unknown, and it hasn't been seen on a real iPhone. If the capture suite fails this way again, its `longMisses` report whether `seeked` arrived, whether callbacks came with old times or not at all, and whether the page was still rendering. A likely fix is to seek away and back after the first miss, which is what recovers from the iOS first-seek behavior above.
+- About one in ten iOS Simulator runs on CI, a long first seek got no new-frame callback within its limit and captured an earlier frame, with no warning. The cause is unknown, and it hasn't been seen on a real iPhone, though one wrong frame is easy to miss. `VideoSeeker` seeks away and back after the first such miss, which is what recovers from the iOS first-seek behavior above, but this is too rare to show that it's fixed. If the capture suite fails this way again, its `longMisses` report whether `seeked` arrived, whether callbacks came with old times or not at all, and whether the page was still rendering.
 - Safari can decode the same frame slightly differently from one pass to the next, though always the right frame. The cause is unknown, and the only effect seen is an estimate differing by under 2%.

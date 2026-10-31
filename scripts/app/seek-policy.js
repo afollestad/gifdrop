@@ -17,6 +17,7 @@ const LATENCY_DECAY = 0.9;
 const LONG_SEEK = 0.25;
 const LONG_SEEK_FALLBACKS_MS = [5000, 1000, 250];
 const NO_CALLBACK_LONG_SEEK_FALLBACK_MS = 1000;
+const RETRY_WAYPOINT_DISTANCE = 0.5;
 
 // The offset keeps the seek off a frame boundary, where rounding could land on
 // the frame before. Seeking exactly to the duration can show nothing at all.
@@ -61,6 +62,14 @@ export function presentFallbackMs({ distance, recentLatencyMs, hasFrameCallback,
 
 export function isLongSeek(distance) {
     return distance > LONG_SEEK;
+}
+
+// Where to go before repeating a long seek that found no new frame, since seeking to the
+// same position again doesn't make it paint. It's back toward where the seek came from, so
+// the repeat is still a long seek, but close to the target, so there's little more to decode.
+export function retryWaypoint(target, from) {
+    const distance = Math.min(Math.abs(from - target), RETRY_WAYPOINT_DISTANCE);
+    return from < target ? target - distance : target + distance;
 }
 
 // Tracks the slowest recent seek, fading so one slow seek doesn't slow the rest.

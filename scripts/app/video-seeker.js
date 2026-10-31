@@ -2,7 +2,7 @@
 // `seeked` alone isn't enough, since Safari and iOS can paint after it, and
 // requestVideoFrameCallback alone isn't either, since a seek that lands on the
 // frame already showing may never fire it. seek-policy.js decides between them.
-import { confirmsSameFrame, isLongSeek, nextRecentLatency, presentFallbackMs, seekTarget, showsNewFrame } from './seek-policy.js';
+import { confirmsSameFrame, isLongSeek, nextRecentLatency, presentFallbackMs, retryWaypoint, seekTarget, showsNewFrame } from './seek-policy.js';
 
 const SEEK_WATCHDOG_MS = 15000;
 const LOST_SEEKED_CHECK_MS = 1000;
@@ -69,12 +69,24 @@ export class VideoSeeker {
         this.#onLongMiss = onLongMiss;
     }
 
+    // Resolves with whether a new frame was seen. The first long seek to see none goes
+    // somewhere nearby and tries again, since a rare seek on iOS has captured an earlier frame,
+    // too briefly for anyone to notice. A video with long gaps misses this way too,
+    // which is why it's only the first. Without frame callbacks or while hidden, nothing
+    // could tell whether the second try worked.
     async seek(target) {
         if (!this.#settled) {
             await this.#settleInitialFrame();
             this.#settled = true;
         }
-        await this.#seekOnce(target);
+        const video = this.#video;
+        const from = video.currentTime;
+        const missesBefore = this.#longSeekMisses;
+        const landed = await this.#seekOnce(target);
+        const firstLongMiss = missesBefore === 0 && this.#longSeekMisses === 1;
+        if (!firstLongMiss || !video.requestVideoFrameCallback || document.hidden) return landed;
+        await this.#seekOnce(retryWaypoint(target, from), { untilSeeked: true });
+        return this.#seekOnce(target);
     }
 
     // A new video's first frame callback can arrive after the first seek has
@@ -98,7 +110,8 @@ export class VideoSeeker {
         });
     }
 
-    #seekOnce(target) {
+    // `untilSeeked` is for passing through a position, where what's painted doesn't matter.
+    #seekOnce(target, { untilSeeked = false } = {}) {
         const video = this.#video;
         const signal = this.#signal;
         const before = video.currentTime;
@@ -135,6 +148,8 @@ export class VideoSeeker {
                 signal?.removeEventListener('abort', onAbort);
                 if (error) {
                     reject(error);
+                } else if (untilSeeked) {
+                    resolve(false);
                 } else {
                     this.#recentLatencyMs = nextRecentLatency(this.#recentLatencyMs, latencyMs);
                     if (isLongSeek(distance) && latencyMs === null) {
@@ -153,11 +168,15 @@ export class VideoSeeker {
                         });
                         this.#longSeekMisses++;
                     }
-                    resolve();
+                    resolve(latencyMs !== null);
                 }
             };
 
             const check = () => {
+                if (seeked && untilSeeked) {
+                    finish();
+                    return;
+                }
                 if (!seeked || video.readyState < HAVE_CURRENT_DATA) return;
                 if (latencyMs !== null) {
                     finish();
@@ -228,7 +247,7 @@ export class VideoSeeker {
             signal?.addEventListener('abort', onAbort);
             armWatchdog();
 
-            if (hasFrameCallback) watchFrames();
+            if (hasFrameCallback && !untilSeeked) watchFrames();
 
             video.currentTime = target;
 
@@ -251,11 +270,12 @@ export async function canSeekNearEnd(video, { signal, onLongMiss } = {}) {
     if (!video.requestVideoFrameCallback) return true;
     await whenVisible(signal);
     const seeker = new VideoSeeker(video, { signal, onLongMiss });
+    let landed;
     try {
-        await seeker.seek(seekTarget(video.duration * NEAR_END_SHARE, video.duration));
+        landed = await seeker.seek(seekTarget(video.duration * NEAR_END_SHARE, video.duration));
     } catch (error) {
         if (error instanceof SeekStalledError || error instanceof VideoDecodeError) return false;
         throw error;
     }
-    return document.hidden || seeker.presentFallbacks === 0;
+    return document.hidden || landed;
 }
