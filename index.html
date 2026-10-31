@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>GifDrop</title>
+    <meta name="description" content="Drop a video, get a GIF. Trim, crop and tune it right in your browser, with nothing uploaded.">
+
+    <meta name="theme-color" content="#f4f9ff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#060d1e" media="(prefers-color-scheme: dark)">
+
+    <meta property="og:title" content="GifDrop">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://gifdrop.af.codes">
+    <meta property="og:description" content="Drop a video, get a GIF. Trim, crop and tune it right in your browser, with nothing uploaded.">
+    <meta property="og:image" content="https://gifdrop.af.codes/images/og-image.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="The GifDrop icon, a film strip curled into a water drop, beside the name and the words: drop a video, get a GIF.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://gifdrop.af.codes/images/og-image.png">
+    <meta name="twitter:image:alt" content="The GifDrop icon, a film strip curled into a water drop, beside the name and the words: drop a video, get a GIF.">
+
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" href="favicon.png" type="image/png" sizes="96x96">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+    <link rel="stylesheet" href="styles/index-common.css">
+    <link rel="stylesheet" href="styles/index-dark.css" id="theme-dark" media="(prefers-color-scheme: dark)">
+    <link rel="stylesheet" href="styles/index-light.css" id="theme-light"
+        media="(prefers-color-scheme: no-preference), (prefers-color-scheme: light)">
+
+    <link rel="modulepreload" href="scripts/app/main.js">
+    <link rel="modulepreload" href="scripts/app/state.js">
+    <link rel="modulepreload" href="scripts/app/file-check.js">
+    <link rel="modulepreload" href="scripts/ui/dropzone.js">
+    <link rel="modulepreload" href="scripts/ui/status.js">
+
+    <script src="scripts/dark-mode.js"></script>
+    <script type="module" src="scripts/app/main.js"></script>
+</head>
+
+<body data-screen="empty" data-view="empty">
+    <section class="section-hero" id="overview">
+        <div class="hero-sky" aria-hidden="true"></div>
+
+        <div class="top-brand">
+            <a class="brand-logo" href="https://af.codes" aria-label="af.codes, by Aidan Follestad">
+                <img src="images/af.png" alt="" width="32" height="32" decoding="async">
+            </a>
+        </div>
+
+        <div class="top-actions">
+            <button class="top-btn theme-toggle" id="theme-toggle" type="button" aria-label="Dark mode">
+                <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+                <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="container hero-copy">
+            <img class="app-icon" src="images/app-icon.png" alt="" width="256" height="256" decoding="async" fetchpriority="high">
+            <h1>GifDrop</h1>
+            <p class="tagline">Drop a video, get a GIF. It all happens in your browser, so your video never leaves your device.</p>
+        </div>
+    </section>
+
+    <main class="container">
+        <div class="notice notice-error" id="error-panel" role="alert" tabindex="-1" hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <p id="error-message"></p>
+            <button class="btn-ghost btn-small" id="error-dismiss" type="button">Dismiss</button>
+        </div>
+
+        <section class="picker" id="picker" aria-label="Choose a video">
+            <button class="dropzone" id="choose-file" type="button">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <span class="dropzone-title">Choose a video</span>
+                <span class="dropzone-hint">or drop one anywhere on this page</span>
+            </button>
+
+            <div class="skills">
+                <div class="skill">
+                    <h2>Private</h2>
+                    <p>Nothing is uploaded. Your video stays on your device from start to finish.</p>
+                </div>
+                <div class="skill">
+                    <h2>Fast</h2>
+                    <p>Uses your browser's own video decoder, so most clips convert in seconds.</p>
+                </div>
+                <div class="skill">
+                    <h2>Tuned</h2>
+                    <p>Trim, crop and set the size, speed and loop, and see the file size before you commit.</p>
+                </div>
+            </div>
+        </section>
+
+        <input class="visually-hidden" id="file-input" type="file" accept="video/*" tabindex="-1" aria-hidden="true">
+
+        <section class="workspace" id="workspace" aria-labelledby="editor-heading" hidden>
+            <h2 class="visually-hidden" id="editor-heading" tabindex="-1">Edit your GIF</h2>
+
+            <div class="workspace-main">
+                <div class="stage-frame" id="stage-frame">
+                    <div class="stage" id="stage">
+                        <div class="stage-loading" id="stage-loading" hidden>
+                            <span class="spinner" aria-hidden="true"></span>
+                        </div>
+                        <div class="crop-layer" id="crop-layer" data-needs-video hidden>
+                            <div class="crop-box" id="crop-box" tabindex="0" role="group" aria-label="Crop area. Arrow keys move it, hold Shift to move further, hold Alt to resize.">
+                                <span class="crop-handle" data-handle="nw" aria-hidden="true"></span>
+                                <span class="crop-handle" data-handle="n" aria-hidden="true"></span>
+                                <span class="crop-handle" data-handle="ne" aria-hidden="true"></span>
+                                <span class="crop-handle" data-handle="e" aria-hidden="true"></span>
+                                <span class="crop-handle" data-handle="se" aria-hidden="true"></span>
+                                <span class="crop-handle" data-handle="s" aria-hidden="true"></span>
+                                <span class="crop-handle" data-handle="sw" aria-hidden="true"></span>
+                                <span class="crop-handle" data-handle="w" aria-hidden="true"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="trim" id="trim-section" data-needs-video>
+                    <div class="trim-header">
+                        <button class="icon-button" id="play-toggle" type="button" aria-label="Play preview">
+                            <svg class="icon-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                            <svg class="icon-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="3" width="5" height="18" rx="1"/><rect x="14" y="3" width="5" height="18" rx="1"/></svg>
+                        </button>
+                        <h3 class="section-label">Trim</h3>
+                        <span class="trim-length" id="trim-length"></span>
+                    </div>
+                    <div class="trim-track" id="trim-track">
+                        <input class="trim-range" id="trim-start" type="range" min="0" max="1" step="0.01" value="0" aria-label="Trim start">
+                        <input class="trim-range" id="trim-end" type="range" min="0" max="1" step="0.01" value="1" aria-label="Trim end">
+                    </div>
+                    <div class="trim-times">
+                        <label class="field field-inline">
+                            <span>Start</span>
+                            <input id="trim-start-text" type="text" inputmode="decimal" autocomplete="off" spellcheck="false">
+                        </label>
+                        <label class="field field-inline">
+                            <span>End</span>
+                            <input id="trim-end-text" type="text" inputmode="decimal" autocomplete="off" spellcheck="false">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="workspace-side">
+                <div class="panel" id="controls">
+                    <div class="notice notice-warn" id="unblock-panel" hidden>
+                        <p>Your browser needs a tap before it can open this video.</p>
+                        <button class="btn-primary btn-small" id="unblock-button" type="button">Open video</button>
+                    </div>
+
+                    <fieldset class="group" data-needs-video>
+                        <legend class="section-label">Crop</legend>
+                        <div class="segments segments-wrap" id="aspect-options">
+                            <label class="segment"><input type="radio" name="aspect" value="original" checked><span>Original</span></label>
+                            <label class="segment"><input type="radio" name="aspect" value="free"><span>Free</span></label>
+                            <label class="segment"><input type="radio" name="aspect" value="1"><span>1:1</span></label>
+                            <label class="segment"><input type="radio" name="aspect" value="1.3333333333"><span>4:3</span></label>
+                            <label class="segment"><input type="radio" name="aspect" value="1.7777777778"><span>16:9</span></label>
+                            <label class="segment"><input type="radio" name="aspect" value="0.5625"><span>9:16</span></label>
+                            <label class="segment"><input type="radio" name="aspect" value="0.8"><span>4:5</span></label>
+                        </div>
+                        <div class="crop-fields" id="crop-fields" hidden>
+                            <label class="field"><span>X</span><input id="crop-x" type="number" min="0" step="1" inputmode="numeric"></label>
+                            <label class="field"><span>Y</span><input id="crop-y" type="number" min="0" step="1" inputmode="numeric"></label>
+                            <label class="field"><span>Width</span><input id="crop-width" type="number" min="1" step="1" inputmode="numeric"></label>
+                            <label class="field"><span>Height</span><input id="crop-height" type="number" min="1" step="1" inputmode="numeric"></label>
+                        </div>
+                        <output class="visually-hidden" id="crop-announcer"></output>
+                    </fieldset>
+
+                    <fieldset class="group" data-needs-video>
+                        <legend class="section-label">Output</legend>
+                        <div class="field field-range">
+                            <span class="field-row"><label for="size-range">Size</label><output id="size-output" for="size-range" aria-live="off"></output></span>
+                            <input id="size-range" type="range" min="64" max="1280" step="2">
+                        </div>
+                        <div class="field-pair">
+                            <label class="field"><span>Frame rate</span>
+                                <select id="fps-select"></select>
+                            </label>
+                            <label class="field"><span>Speed</span>
+                                <select id="speed-select"></select>
+                            </label>
+                        </div>
+                        <div class="field">
+                            <span id="quality-label">Quality</span>
+                            <div class="segments" role="radiogroup" aria-labelledby="quality-label" id="quality-options">
+                                <label class="segment"><input type="radio" name="quality" value="small"><span>Small</span></label>
+                                <label class="segment"><input type="radio" name="quality" value="balanced" checked><span>Balanced</span></label>
+                                <label class="segment"><input type="radio" name="quality" value="high"><span>High</span></label>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <span id="loop-label">Loop</span>
+                            <div class="segments" role="radiogroup" aria-labelledby="loop-label" id="loop-options">
+                                <label class="segment"><input type="radio" name="loop" value="forever" checked><span>Forever</span></label>
+                                <label class="segment"><input type="radio" name="loop" value="once"><span>Once</span></label>
+                                <label class="segment"><input type="radio" name="loop" value="boomerang"><span>Boomerang</span></label>
+                            </div>
+                            <p class="field-hint" id="loop-hint" hidden>Some apps loop every GIF regardless.</p>
+                        </div>
+                    </fieldset>
+
+                    <div class="notice notice-warn" id="notice-panel" hidden>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <div id="notice-messages"></div>
+                    </div>
+
+                    <div class="action-bar">
+                        <div class="estimate" id="estimate" aria-live="off">
+                            <strong id="estimate-value">&nbsp;</strong>
+                            <span id="estimate-detail">&nbsp;</span>
+                        </div>
+                        <button class="btn-primary" id="convert-button" type="button" disabled>Convert</button>
+                    </div>
+                    <button class="btn-text" id="replace-button" type="button">Choose a different video</button>
+                </div>
+
+                <div class="panel" id="progress-panel" hidden>
+                    <h3 class="progress-title" id="progress-heading" tabindex="-1">Making your GIF</h3>
+                    <progress id="progress-bar" max="1" value="0" aria-labelledby="progress-heading"></progress>
+                    <p class="progress-detail" id="progress-detail">&nbsp;</p>
+                    <button class="btn-ghost" id="cancel-button" type="button">Cancel</button>
+                </div>
+
+                <div class="panel" id="result-panel" hidden>
+                    <h3 class="progress-title" id="result-heading" tabindex="-1">Your GIF is ready</h3>
+                    <dl class="result-facts">
+                        <div><dt>File size</dt><dd id="result-size"></dd></div>
+                        <div><dt>Dimensions</dt><dd id="result-dimensions"></dd></div>
+                        <div><dt>Frames</dt><dd id="result-frames"></dd></div>
+                        <div><dt>Length</dt><dd id="result-length"></dd></div>
+                    </dl>
+                    <a class="btn-primary" id="download-link" href="#">Download GIF</a>
+                    <button class="btn-ghost" id="adjust-button" type="button">Adjust settings</button>
+                    <button class="btn-text" id="result-replace-button" type="button">Choose a different video</button>
+                </div>
+            </div>
+
+            <div class="result-figure" id="result-figure" hidden>
+                <img id="result-image" alt="The finished GIF, playing." decoding="async">
+                <canvas id="result-poster" role="img" aria-label="The finished GIF, paused on its first frame." hidden></canvas>
+                <button class="icon-button result-toggle" id="result-toggle" type="button" aria-label="Pause GIF">
+                    <svg class="icon-play" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                    <svg class="icon-pause" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="3" width="5" height="18" rx="1"/><rect x="14" y="3" width="5" height="18" rx="1"/></svg>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <p>
+            Built by <a href="https://af.codes">Aidan Follestad</a> &#8226;
+            <a href="https://github.com/afollestad/gifdrop">Open source</a>
+            (<a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a>)
+        </p>
+    </footer>
+
+    <div class="drop-overlay" id="drop-overlay" hidden>
+        <div class="drop-overlay-card">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <p>Drop your video</p>
+        </div>
+    </div>
+
+    <div class="visually-hidden" id="status-region" role="status" aria-live="polite"></div>
+</body>
+
+</html>

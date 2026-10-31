@@ -7,7 +7,7 @@ const TRANSITIONS = {
     editing: { convert: 'converting', fileChosen: 'loading' },
     converting: { converted: 'done', cancel: 'editing', convertFailed: 'error' },
     done: { adjust: 'editing', convert: 'converting', fileChosen: 'loading' },
-    error: { dismiss: null, fileChosen: 'loading' },
+    error: { dismiss: null, fileChosen: 'loading', convert: 'converting' },
 };
 
 export const INITIAL_STATE = { screen: 'empty', errorReturnsTo: null };

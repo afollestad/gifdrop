@@ -15,9 +15,10 @@ export function formatTime(seconds) {
     return `${minutes}:${rest.toFixed(1).padStart(4, '0')}`;
 }
 
-// Takes "1:03.2", "63.2" or "1:03", and returns null for anything else.
+// Takes "1:03.2", "63.2" or "1:03", or with a comma as some keyboards offer, and returns
+// null for anything else.
 export function parseTime(text) {
-    const match = /^\s*(?:(\d+):)?(\d+(?:\.\d*)?|\.\d+)\s*$/.exec(text);
+    const match = /^\s*(?:(\d+):)?(\d+(?:\.\d*)?|\.\d+)\s*$/.exec(text.replace(',', '.'));
     if (!match) return null;
     const minutes = match[1] ? Number(match[1]) : 0;
     const seconds = Number(match[2]);

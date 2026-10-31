@@ -1,6 +1,6 @@
 // Runs the end-to-end suites in a browser, prints the outcome, and exits non-zero if
 // anything failed:
-//   node tests/e2e/run.mjs [chrome | firefox | safari | ios | ios=<udid>] [capture | convert]
+//   node tests/e2e/run.mjs [chrome | firefox | safari | ios | ios=<udid>] [capture | convert | ui]
 import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,7 @@ const PASSING = new Set(['pass', 'unsupported', 'flagged']);
 const SUITES = {
     capture: { page: 'capture.html', check: (report) => report },
     convert: { page: 'convert.html', check: (report, name) => checkConvertReport(report, (index) => readFileSync(join(OUT, `${name}-${index}.gif`))) },
+    ui: { page: 'ui.html', check: (report) => report },
 };
 
 function describe(result) {

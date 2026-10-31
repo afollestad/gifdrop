@@ -126,7 +126,7 @@ async function runCase(testCase) {
         result.wrongSample = wrong.slice(0, 8);
         result.capturedPerSecond = Number((grabber.stats.frames / (elapsed / 1000)).toFixed(1));
         result.stats = grabber.stats;
-        const flaggedWrongly = !testCase.mayNotSeek && !(await canSeekNearEnd(video));
+        const flaggedWrongly = !testCase.mayNotSeek && !testCase.mayWarn && !(await canSeekNearEnd(video));
         if (flaggedWrongly) result.error = 'Flagged as not readable to the end';
         result.status = wrong.length === 0 && sizeOk && !flaggedWrongly ? 'pass' : 'FAIL';
     } catch (error) {

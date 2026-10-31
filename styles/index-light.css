@@ -1,0 +1,45 @@
+/* Light theme: a cool white under a glow of the icon's blues.
+   Don't forget to update the theme colors in scripts/dark-mode.js and index.html's
+   theme-color metas if --bg changes. */
+
+:root {
+    color-scheme: light;
+
+    --bg: #f4f9ff;
+    --fg: #0b1a33;
+    --secondary: #44546f;
+    /* The icon's deep blue, 7.1:1 on --bg. */
+    --accent: #0144d6;
+    --accent-text: #0144d6;
+    --on-accent: #ffffff;
+    --danger: #a8201a;
+    --warn: #8a4b00;
+    /* Every stop holds at least 3:1 even where the hero's glow is strongest. */
+    --title-gradient: linear-gradient(100deg, #012f9e 5%, #0144d6 50%, #0a6ee6 95%);
+    --glass: rgba(255, 255, 255, .7);
+    --glass-strong: rgba(255, 255, 255, .92);
+    --glass-border: rgba(11, 26, 51, .12);
+    /* At least 3:1 on the panels, so fields can be told apart from them. */
+    --field-border: rgba(11, 26, 51, .5);
+    --glass-shadow: rgba(1, 50, 150, .16);
+    --icon-shadow: rgba(1, 50, 150, .22);
+    --divider: rgba(11, 26, 51, .14);
+    --track: rgba(11, 26, 51, .16);
+    --accent-glow: rgba(1, 68, 214, .25);
+    --scrim: rgba(244, 249, 255, .82);
+}
+
+html {
+    background: var(--bg);
+}
+
+.theme-toggle .icon-moon {
+    display: block;
+}
+
+/* The icon's deep blue washing down from the top, with its cyan to one side. */
+.hero-sky {
+    background:
+        radial-gradient(ellipse 1100px 520px at 50% 0%, rgba(1, 68, 214, .16) 0%, rgba(1, 68, 214, .06) 50%, rgba(1, 68, 214, 0) 100%),
+        radial-gradient(ellipse 700px 420px at 82% 18%, rgba(42, 224, 253, .14) 0%, rgba(42, 224, 253, 0) 70%);
+}

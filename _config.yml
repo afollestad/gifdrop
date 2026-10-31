@@ -5,6 +5,7 @@ exclude:
   - .claude/
   - .github/
   - tests/
+  - og-image/
   - package.json
   - AGENTS.md
   - CLAUDE.md

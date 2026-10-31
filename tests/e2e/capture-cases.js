@@ -5,7 +5,8 @@
 //
 // Every video must pass canSeekNearEnd unless `mayNotSeek` says a browser can
 // legitimately fail it, in which case it's flagged and its frames aren't checked,
-// and `mustNotSeek` requires that outcome.
+// and `mustNotSeek` requires that outcome. `mayWarn` is for a video that passes every
+// frame but can still fail that check, as one that barely changes may.
 
 const at30 = (t) => Math.floor(t * 30);
 
@@ -33,7 +34,7 @@ export const CAPTURE_CASES = [
     { name: 'noisy 30fps from 3s', src: 'barcode-noisy.mp4', fps: 30, start: 3, end: 6 },
     { name: 'busy 15fps', src: 'barcode-busy.mp4', fps: 15, end: 6 },
     { name: 'busy 15fps from 1s', src: 'barcode-busy.mp4', fps: 15, start: 1, end: 3 },
-    { name: 'slideshow at 4x', src: 'barcode-sparse.mp4', fps: 15, speed: 4, frameAt: (t) => Math.floor(t / 2) },
+    { name: 'slideshow at 4x', src: 'barcode-sparse.mp4', fps: 15, speed: 4, frameAt: (t) => Math.floor(t / 2), mayWarn: true },
     { name: 'rotated', src: 'barcode-rotated.mp4', fps: 15, axis: 'height', expectSize: [360, 640] },
     { name: 'anamorphic', src: 'barcode-anamorphic.mp4', fps: 15, expectSize: [640, 360] },
     { name: 'large downscale', src: 'barcode.mp4', fps: 15, outputWidth: 96 },

@@ -17,6 +17,8 @@ const FIREFOX_PATHS = {
     win32: ['C:\\Program Files\\Mozilla Firefox\\firefox.exe'],
 };
 
+const OPEN_URL_ATTEMPTS = 4;
+
 const FIREFOX_PREFS = `
 user_pref("browser.shell.checkDefaultBrowser", false);
 user_pref("browser.aboutwelcome.enabled", false);
@@ -82,12 +84,26 @@ function findSimulator() {
     throw new Error('No iPhone simulator is available.');
 }
 
+// Reports what the command said, rather than Node's dump of its output as bytes.
+function simctl(...args) {
+    const run = spawnSync('xcrun', ['simctl', ...args], { encoding: 'utf8' });
+    if (run.status !== 0) throw new Error(`simctl ${args[0]} failed: ${run.stderr.trim()}`);
+}
+
 function openIosSimulator(url, requestedUdid) {
     const udid = requestedUdid ?? findSimulator();
     // Boots it if needed, since an idle simulator can shut itself down.
-    execFileSync('xcrun', ['simctl', 'bootstatus', udid, '-b'], { stdio: 'ignore' });
-    execFileSync('xcrun', ['simctl', 'openurl', udid, url]);
-    return () => {};
+    simctl('bootstatus', udid, '-b');
+    // A simulator that has only just booted can time out on this, as CI runners' do.
+    for (let attempt = 1; ; attempt++) {
+        try {
+            simctl('openurl', udid, url);
+            return () => {};
+        } catch (error) {
+            if (attempt === OPEN_URL_ATTEMPTS) throw error;
+            console.warn(`Retrying: ${error.message}`);
+        }
+    }
 }
 
 // `spec` is chrome, firefox, safari, ios, or ios=<simulator udid>.

@@ -20,6 +20,7 @@ test('parseTime reads what people type', () => {
     assert.equal(parseTime('1:03'), 63);
     assert.equal(parseTime('.5'), 0.5);
     assert.equal(parseTime(' 5 '), 5);
+    assert.equal(parseTime('1,5'), 1.5);
     assert.equal(parseTime(formatTime(63.2)), 63.2);
 });
 

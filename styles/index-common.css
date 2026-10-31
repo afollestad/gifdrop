@@ -1,0 +1,1235 @@
+/* Theme-independent layout for gifdrop.af.codes, in the same family as af.codes and
+   the app sites. Color tokens and the glow painted with them live in index-light.css
+   and index-dark.css. Only transform and opacity animate, so nothing here repaints
+   the page during a transition. */
+
+:root {
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --radius: .9rem;
+    --hit: 2.75rem;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    scroll-padding-top: 1rem;
+}
+
+body {
+    margin: 0;
+    font-family: var(--font);
+    line-height: 1.5;
+    background: var(--bg);
+    color: var(--fg);
+    -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p,
+dl,
+dd,
+fieldset,
+legend {
+    margin: 0;
+    padding: 0;
+}
+
+fieldset {
+    border: none;
+    min-width: 0;
+}
+
+img,
+canvas,
+video {
+    display: block;
+    max-width: 100%;
+}
+
+a {
+    color: inherit;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+}
+
+/* Headings that take focus for screen readers aren't controls, so no ring. */
+h2[tabindex]:focus-visible,
+h3[tabindex]:focus-visible,
+.notice[tabindex]:focus-visible {
+    outline: none;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+.container {
+    max-width: 68rem;
+    margin: 0 auto;
+    padding: 0 max(1.25rem, env(safe-area-inset-right)) 0 max(1.25rem, env(safe-area-inset-left));
+}
+
+/* Hero ------------------------------------------------------------------- */
+
+.section-hero {
+    position: relative;
+    overflow: hidden;
+    overflow: clip;
+    padding: 5.5rem 0 2.25rem;
+    text-align: center;
+}
+
+.hero-sky {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+}
+
+.hero-copy,
+.top-brand,
+.top-actions {
+    position: relative;
+    z-index: 1;
+}
+
+.top-brand,
+.top-actions {
+    position: absolute;
+    top: 1rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.top-brand {
+    left: max(1.5rem, env(safe-area-inset-left));
+}
+
+.top-actions {
+    right: max(1.5rem, env(safe-area-inset-right));
+    gap: .5rem;
+}
+
+.brand-logo {
+    display: inline-flex;
+    padding: .25rem;
+    border-radius: 50%;
+}
+
+.brand-logo img {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+}
+
+.top-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    opacity: .75;
+    transition: opacity .2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .top-btn:hover {
+        opacity: 1;
+    }
+}
+
+.top-btn:focus-visible {
+    opacity: 1;
+}
+
+.theme-toggle .icon-sun,
+.theme-toggle .icon-moon {
+    display: none;
+}
+
+/* Has its plate and corners in the image; drop-shadow follows its alpha. */
+.app-icon {
+    width: 6rem;
+    height: 6rem;
+    margin: 0 auto .75rem;
+    filter: drop-shadow(0 .6rem 1.2rem var(--icon-shadow));
+}
+
+.hero-copy h1 {
+    display: inline-block;
+    font-size: clamp(2.75rem, 7vw, 4.25rem);
+    letter-spacing: -.035em;
+    line-height: 1.1;
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    .hero-copy h1 {
+        background: var(--title-gradient);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+}
+
+.tagline {
+    max-width: 36rem;
+    margin: 1rem auto 0;
+    font-size: clamp(1.05rem, 1.6vw, 1.2rem);
+    line-height: 1.55;
+    color: var(--secondary);
+    text-wrap: balance;
+}
+
+/* Once there's a video, the hero steps aside for it. */
+body:not([data-view="empty"]) .section-hero {
+    padding: 1rem 0 1.25rem;
+}
+
+body:not([data-view="empty"]) .tagline {
+    display: none;
+}
+
+body:not([data-view="empty"]) .hero-copy {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 2.5rem;
+}
+
+body:not([data-view="empty"]) .app-icon {
+    width: 2rem;
+    height: 2rem;
+    margin: 0;
+    filter: none;
+}
+
+body:not([data-view="empty"]) .hero-copy h1 {
+    font-size: 1.5rem;
+    letter-spacing: -.02em;
+}
+
+/* Buttons ---------------------------------------------------------------- */
+
+.btn-primary,
+.btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    min-height: 3rem;
+    padding: 0 1.3rem;
+    border-radius: .65rem;
+    font: inherit;
+    font-size: .95rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: transform .3s var(--spring), opacity .2s ease;
+}
+
+.btn-primary {
+    border: none;
+    background: var(--accent);
+    color: var(--on-accent);
+    box-shadow: 0 .5rem 1.25rem -.5rem var(--accent-glow);
+}
+
+.btn-primary:disabled {
+    cursor: not-allowed;
+    opacity: .45;
+    box-shadow: none;
+}
+
+.btn-ghost {
+    border: 1px solid var(--glass-border);
+    background: var(--glass);
+    color: var(--fg);
+}
+
+.btn-small {
+    min-height: var(--hit);
+    padding: 0 1rem;
+    font-size: .875rem;
+}
+
+.btn-text {
+    min-height: var(--hit);
+    padding: 0 .5rem;
+    border: none;
+    background: none;
+    color: var(--secondary);
+    font: inherit;
+    font-size: .875rem;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: .2em;
+    cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .btn-primary:not(:disabled):hover,
+    .btn-ghost:hover {
+        transform: scale(1.03);
+    }
+
+    .btn-text:hover {
+        color: var(--accent-text);
+    }
+}
+
+.icon-button {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--hit);
+    height: var(--hit);
+    padding: 0;
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    background: var(--glass);
+    color: var(--fg);
+    cursor: pointer;
+}
+
+.icon-button .icon-pause,
+.icon-button.is-playing .icon-play {
+    display: none;
+}
+
+.icon-button.is-playing .icon-pause {
+    display: block;
+}
+
+/* Picker ----------------------------------------------------------------- */
+
+.dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    width: 100%;
+    max-width: 44rem;
+    min-height: 15rem;
+    margin: 0 auto;
+    padding: 2rem 1.25rem;
+    border: 2px dashed var(--track);
+    border-radius: 1.25rem;
+    background: var(--glass);
+    color: var(--fg);
+    font: inherit;
+    cursor: pointer;
+    box-shadow: 0 .75rem 2rem -1.25rem var(--glass-shadow);
+    transition: transform .3s var(--spring);
+}
+
+.dropzone svg {
+    margin-bottom: .35rem;
+    color: var(--accent-text);
+}
+
+.dropzone-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: -.01em;
+}
+
+.dropzone-hint {
+    color: var(--secondary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .dropzone:hover {
+        transform: translateY(-3px);
+    }
+}
+
+.skills {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    max-width: 52rem;
+    margin: 3rem auto 0;
+    text-align: center;
+}
+
+.skill {
+    padding: .25rem 1.25rem;
+}
+
+.skill + .skill {
+    border-left: 1px solid var(--divider);
+}
+
+.skill h2 {
+    font-size: 1.05rem;
+    color: var(--accent-text);
+}
+
+.skill p {
+    margin-top: .35rem;
+    font-size: .95rem;
+    color: var(--secondary);
+}
+
+/* Workspace -------------------------------------------------------------- */
+
+.workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 23rem);
+    align-items: start;
+    gap: 1.5rem;
+}
+
+.workspace-main {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+    contain: layout style;
+}
+
+/* Sized from the video's shape as soon as its metadata arrives, so nothing moves when
+   its first frame does. Tall videos are held to the window's height. */
+.stage-frame {
+    --video-aspect: 16 / 9;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+}
+
+.stage {
+    position: relative;
+    width: min(100%, calc(68vh * var(--video-aspect)));
+    aspect-ratio: var(--video-aspect);
+    overflow: hidden;
+    border-radius: var(--radius);
+    background: #000;
+    box-shadow: 0 .75rem 2rem -1rem var(--glass-shadow);
+    contain: layout paint;
+}
+
+/* The capture video is underneath, covered but still rendered, since browsers may
+   stop decoding a video that isn't. */
+.stage-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.stage-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+}
+
+.spinner {
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 3px solid rgba(255, 255, 255, .25);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Crop ------------------------------------------------------------------- */
+
+.crop-layer {
+    position: absolute;
+    inset: 0;
+}
+
+/* Positioned in shares of the frame, so resizing the window needs no work. The huge
+   shadow dims everything outside the box. */
+.crop-box {
+    position: absolute;
+    left: calc(var(--crop-x, 0) * 100%);
+    top: calc(var(--crop-y, 0) * 100%);
+    width: calc(var(--crop-w, 1) * 100%);
+    height: calc(var(--crop-h, 1) * 100%);
+    border: 1px solid #fff;
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .55);
+    cursor: move;
+    touch-action: none;
+}
+
+/* Inside the box, since the stage clips anything past a crop that reaches the frame. */
+.crop-box:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -4px;
+}
+
+/* Each handle's hit area sits inside the box, so the stage can't clip it when the crop
+   reaches the frame, with its visible square against the box's edge. */
+.crop-handle {
+    --offset: calc(50% - var(--hit) / 2);
+    position: absolute;
+    width: var(--hit);
+    height: var(--hit);
+    touch-action: none;
+}
+
+.crop-handle::after {
+    content: "";
+    position: absolute;
+    width: .7rem;
+    height: .7rem;
+    border: 1px solid rgba(0, 0, 0, .5);
+    border-radius: 2px;
+    background: #fff;
+}
+
+.crop-handle[data-handle="nw"] { left: 0; top: 0; cursor: nwse-resize; }
+.crop-handle[data-handle="n"] { left: var(--offset); top: 0; cursor: ns-resize; }
+.crop-handle[data-handle="ne"] { right: 0; top: 0; cursor: nesw-resize; }
+.crop-handle[data-handle="e"] { right: 0; top: var(--offset); cursor: ew-resize; }
+.crop-handle[data-handle="se"] { right: 0; bottom: 0; cursor: nwse-resize; }
+.crop-handle[data-handle="s"] { left: var(--offset); bottom: 0; cursor: ns-resize; }
+.crop-handle[data-handle="sw"] { left: 0; bottom: 0; cursor: nesw-resize; }
+.crop-handle[data-handle="w"] { left: 0; top: var(--offset); cursor: ew-resize; }
+
+.crop-handle[data-handle="nw"]::after { left: 0; top: 0; }
+.crop-handle[data-handle="n"]::after { left: calc(50% - .35rem); top: 0; }
+.crop-handle[data-handle="ne"]::after { right: 0; top: 0; }
+.crop-handle[data-handle="e"]::after { right: 0; top: calc(50% - .35rem); }
+.crop-handle[data-handle="se"]::after { right: 0; bottom: 0; }
+.crop-handle[data-handle="s"]::after { left: calc(50% - .35rem); bottom: 0; }
+.crop-handle[data-handle="sw"]::after { left: 0; bottom: 0; }
+.crop-handle[data-handle="w"]::after { left: 0; top: calc(50% - .35rem); }
+
+/* Trim ------------------------------------------------------------------- */
+
+.trim {
+    display: grid;
+    gap: .5rem;
+    padding: 1rem;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    background: var(--glass);
+}
+
+.trim-header {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+.section-label {
+    font-size: .95rem;
+    font-weight: 600;
+}
+
+.trim-length {
+    margin-left: auto;
+    color: var(--secondary);
+    font-size: .875rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Two range inputs on one track. Only their thumbs take pointer events, so each stays
+   reachable under the other. The selected stretch is painted from their values. */
+.trim-track {
+    --trim-start: 0;
+    --trim-end: 1;
+    position: relative;
+    height: var(--hit);
+}
+
+.trim-track::before,
+.trim-track::after {
+    content: "";
+    position: absolute;
+    top: calc(50% - .2rem);
+    height: .4rem;
+    border-radius: 999px;
+}
+
+.trim-track::before {
+    left: 0;
+    right: 0;
+    background: var(--track);
+}
+
+.trim-track::after {
+    left: calc(var(--trim-start) * 100%);
+    width: calc((var(--trim-end) - var(--trim-start)) * 100%);
+    background: var(--accent);
+}
+
+.trim-range {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    background: none;
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.trim-range.is-raised {
+    z-index: 2;
+}
+
+.trim-range::-webkit-slider-runnable-track {
+    height: 100%;
+    background: none;
+}
+
+.trim-range::-moz-range-track {
+    height: 100%;
+    background: none;
+}
+
+.trim-range::-webkit-slider-thumb {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: calc((var(--hit) - 1.5rem) / 2);
+    border: 2px solid var(--on-accent);
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+    cursor: ew-resize;
+    pointer-events: auto;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.trim-range::-moz-range-thumb {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2px solid var(--on-accent);
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+    cursor: ew-resize;
+    pointer-events: auto;
+}
+
+.trim-range:focus-visible {
+    outline: none;
+}
+
+.trim-range:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+}
+
+.trim-range:focus-visible::-moz-range-thumb {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+    .trim-range::-webkit-slider-thumb {
+        width: var(--hit);
+        height: var(--hit);
+        margin-top: 0;
+        border-width: .6rem;
+        border-color: transparent;
+        background-clip: padding-box;
+        box-shadow: none;
+    }
+
+    .trim-range::-moz-range-thumb {
+        box-sizing: border-box;
+        width: var(--hit);
+        height: var(--hit);
+        border-width: .6rem;
+        border-color: transparent;
+        background-clip: padding-box;
+        box-shadow: none;
+    }
+}
+
+.trim-times {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+/* Panels and fields ------------------------------------------------------ */
+
+.workspace-side {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.panel {
+    display: grid;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    background: var(--glass);
+    box-shadow: 0 .75rem 2rem -1.25rem var(--glass-shadow);
+}
+
+.group {
+    display: grid;
+    gap: .75rem;
+    min-width: 0;
+}
+
+.group legend {
+    margin-bottom: .6rem;
+}
+
+.field {
+    display: grid;
+    gap: .3rem;
+    min-width: 0;
+    color: var(--secondary);
+    font-size: .875rem;
+}
+
+.field-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.field-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+}
+
+.field-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.field-row output {
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+}
+
+.field-hint {
+    margin-top: .1rem;
+    font-size: .8rem;
+}
+
+.field input[type="text"],
+.field input[type="number"],
+.field select {
+    width: 100%;
+    min-height: var(--hit);
+    padding: 0 .65rem;
+    border: 1px solid var(--field-border);
+    border-radius: .5rem;
+    background: var(--glass-strong);
+    color: var(--fg);
+    /* Below 16px, iOS zooms the page on focus. */
+    font: inherit;
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.field-inline input[type="text"] {
+    width: 6rem;
+}
+
+.field input[aria-invalid="true"] {
+    border-color: var(--danger);
+}
+
+.field-range input[type="range"] {
+    width: 100%;
+    height: var(--hit);
+    margin: 0;
+    accent-color: var(--accent);
+}
+
+.crop-fields {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .5rem;
+}
+
+.segments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+    padding: .2rem;
+    border: 1px solid var(--field-border);
+    border-radius: .65rem;
+    background: var(--glass);
+}
+
+/* Two rows that line up: the two named choices, then the five ratios. */
+.segments-wrap {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+}
+
+.segments-wrap .segment {
+    grid-column: span 2;
+}
+
+.segments-wrap .segment:nth-child(-n + 2) {
+    grid-column: span 5;
+}
+
+.segment {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.segment input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.segment span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.5rem;
+    padding: 0 .5rem;
+    border-radius: .5rem;
+    color: var(--fg);
+    font-size: .875rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.segment input:checked + span {
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 600;
+}
+
+.segment input:focus-visible + span {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 2px;
+}
+
+/* Notices ---------------------------------------------------------------- */
+
+.notice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: .6rem;
+    padding: .75rem .9rem;
+    border: 1px solid currentColor;
+    border-radius: .65rem;
+    font-size: .875rem;
+}
+
+.notice svg {
+    flex: none;
+    margin-top: .1rem;
+}
+
+.notice > p,
+.notice > div {
+    flex: 1 1 12rem;
+    color: var(--fg);
+}
+
+.notice > div p + p {
+    margin-top: .4rem;
+}
+
+.notice-warn {
+    color: var(--warn);
+}
+
+.notice-error {
+    align-items: center;
+    margin-bottom: 1.25rem;
+    color: var(--danger);
+}
+
+/* Action bar ------------------------------------------------------------- */
+
+.action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+}
+
+/* A fixed height, so the button beside it doesn't move as estimates come and go. */
+.estimate {
+    display: grid;
+    flex: 1 1 9rem;
+    min-width: 0;
+    min-height: 2.75rem;
+    align-content: center;
+}
+
+.estimate strong {
+    font-size: .95rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.estimate span {
+    color: var(--secondary);
+    font-size: .8rem;
+}
+
+.action-bar .btn-primary {
+    flex: 0 0 auto;
+    min-width: 8rem;
+}
+
+#controls > .btn-text,
+#result-panel > .btn-text {
+    justify-self: center;
+}
+
+/* Progress and result ---------------------------------------------------- */
+
+.progress-title {
+    font-size: 1.15rem;
+    letter-spacing: -.01em;
+}
+
+progress {
+    display: block;
+    width: 100%;
+    height: .6rem;
+    overflow: hidden;
+    border: none;
+    border-radius: 999px;
+    background: var(--track);
+    accent-color: var(--accent);
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+progress::-webkit-progress-bar {
+    background: var(--track);
+}
+
+progress::-webkit-progress-value {
+    background: var(--accent);
+}
+
+progress::-moz-progress-bar {
+    background: var(--accent);
+}
+
+.progress-detail {
+    min-height: 1.5em;
+    color: var(--secondary);
+    font-size: .9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.result-facts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+}
+
+.result-facts dt {
+    color: var(--secondary);
+    font-size: .8rem;
+}
+
+.result-facts dd {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+#result-panel .btn-primary,
+#result-panel .btn-ghost,
+#progress-panel .btn-ghost {
+    width: 100%;
+}
+
+/* In the stage's grid cell, as wide as the GIF so the button sits on it. */
+.result-figure {
+    position: relative;
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: center;
+    width: fit-content;
+    max-width: 100%;
+}
+
+.result-figure img,
+.result-figure canvas {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: var(--radius);
+    box-shadow: 0 .75rem 2rem -1rem var(--glass-shadow);
+}
+
+.result-toggle {
+    position: absolute;
+    right: .75rem;
+    bottom: .75rem;
+    background: var(--scrim);
+}
+
+.workspace-side {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.workspace-main {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+/* Drop overlay ----------------------------------------------------------- */
+
+/* The only drop target while dragging, with nothing inside able to take events. */
+.drop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    background: var(--scrim);
+}
+
+.drop-overlay-card {
+    display: grid;
+    justify-items: center;
+    gap: .5rem;
+    padding: 3rem 4rem;
+    border: 2px dashed var(--accent-text);
+    border-radius: 1.25rem;
+    color: var(--accent-text);
+    font-size: 1.25rem;
+    font-weight: 600;
+    pointer-events: none;
+}
+
+/* Footer ----------------------------------------------------------------- */
+
+.site-footer {
+    padding: 3rem 1.25rem max(2rem, env(safe-area-inset-bottom));
+    text-align: center;
+    font-size: .875rem;
+    color: var(--secondary);
+}
+
+.site-footer a {
+    text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .site-footer a:hover {
+        color: var(--accent-text);
+        text-decoration: underline;
+    }
+}
+
+/* Responsive ------------------------------------------------------------- */
+
+/* Large enough for a finger, including what's smaller for a mouse. */
+@media (pointer: coarse) {
+    .top-btn,
+    .brand-logo {
+        width: var(--hit);
+        height: var(--hit);
+        align-items: center;
+        justify-content: center;
+    }
+
+    .segment span {
+        min-height: var(--hit);
+    }
+}
+
+@media (forced-colors: active) {
+    .segment input:checked + span {
+        background: Highlight;
+        color: HighlightText;
+        forced-color-adjust: none;
+    }
+
+    .trim-track::after {
+        background: Highlight;
+    }
+}
+
+@media (max-width: 860px) {
+    /* Keeps a focused control from ending up under the sticky bar. */
+    html {
+        scroll-padding-bottom: 7rem;
+    }
+
+    .workspace {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    /* The GIF comes first, with nothing left of the stage above it. */
+    body[data-view="done"] .workspace-main {
+        display: none;
+    }
+
+    .result-figure {
+        order: -1;
+    }
+
+    .workspace-main,
+    .workspace-side,
+    .result-figure {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    .stage {
+        width: min(100%, calc(55vh * var(--video-aspect)));
+    }
+
+    /* Keeps the estimate and Convert in reach on a phone, however far the settings
+       scroll. Opaque rather than blurred, since a blur repaints on every scroll. */
+    .action-bar {
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+        margin: 0 -1.25rem -1.25rem;
+        padding: .75rem 1.25rem max(.75rem, env(safe-area-inset-bottom));
+        border-top: 1px solid var(--glass-border);
+        border-radius: 0 0 var(--radius) var(--radius);
+        background: var(--bg);
+    }
+
+    #controls > .btn-text {
+        order: -1;
+    }
+}
+
+@media (max-width: 400px) {
+    /* One row, so the bar takes as little of a small screen as it can. */
+    .action-bar {
+        flex-wrap: nowrap;
+    }
+
+    .estimate {
+        flex-basis: 0;
+    }
+
+    .estimate span {
+        display: none;
+    }
+
+    .action-bar .btn-primary {
+        min-width: 6.5rem;
+    }
+}
+
+@media (max-width: 600px) {
+    .section-hero {
+        padding-top: 4.5rem;
+    }
+
+    .app-icon {
+        width: 5rem;
+        height: 5rem;
+    }
+
+    .dropzone {
+        min-height: 12rem;
+    }
+
+    .skills {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+        margin-top: 2.25rem;
+    }
+
+    .skill + .skill {
+        border-left: none;
+    }
+
+    .crop-fields {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .trim-times {
+        flex-wrap: wrap;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: .01ms !important;
+        animation-duration: .01ms !important;
+    }
+
+    .btn-primary:hover,
+    .btn-ghost:hover,
+    .dropzone:hover {
+        transform: none !important;
+    }
+
+    /* A spinner that doesn't spin says nothing, so it becomes a steady ring. */
+    .spinner {
+        animation: none;
+        border-top-color: rgba(255, 255, 255, .25);
+    }
+}

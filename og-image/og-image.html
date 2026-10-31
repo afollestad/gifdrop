@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>GifDrop link preview</title>
+    <link rel="stylesheet" href="../styles/index-common.css">
+    <link rel="stylesheet" href="../styles/index-dark.css">
+    <style>
+        html, body { width: 1200px; height: 630px; margin: 0; overflow: hidden; }
+        .card { position: relative; display: flex; align-items: center; justify-content: center; gap: 56px; width: 1200px; height: 630px; }
+        .hero-sky { -webkit-mask-image: none; mask-image: none; }
+        .card img { position: relative; width: 256px; height: 256px; filter: drop-shadow(0 24px 48px rgba(0, 0, 0, .5)); }
+        .copy { position: relative; }
+        h1 { font-size: 124px; letter-spacing: -.035em; line-height: 1.1; background: var(--title-gradient); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        p { margin-top: 16px; font-size: 38px; color: var(--secondary); }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="hero-sky"></div>
+        <img src="../images/app-icon.png" alt="">
+        <div class="copy">
+            <h1>GifDrop</h1>
+            <p>Drop a video, get a GIF.</p>
+        </div>
+    </div>
+</body>
+
+</html>

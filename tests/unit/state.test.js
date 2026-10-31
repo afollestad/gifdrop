@@ -31,6 +31,12 @@ test('a failed conversion keeps the video', () => {
     assert.equal(reduce(state, 'dismiss').screen, 'editing');
 });
 
+test('converting again straight from a failed conversion starts it properly', () => {
+    const state = run('fileChosen', 'loaded', 'convert', 'convertFailed', 'convert');
+    assert.equal(state.screen, 'converting');
+    assert.equal(state.errorReturnsTo, null);
+});
+
 test('a new file can follow anything except a running conversion', () => {
     assert.equal(run('fileChosen', 'fileChosen').screen, 'loading');
     assert.equal(run('fileChosen', 'loaded', 'fileChosen').screen, 'loading');
