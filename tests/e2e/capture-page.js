@@ -20,6 +20,22 @@ async function fixtureUrl(src) {
 }
 const frameAt30 = (t) => Math.floor(t * 30);
 
+const LONG_MISSES_KEPT = 5;
+
+// Frame callbacks need the page to be rendering, so a slow or missing next frame tells a
+// page that had stopped rendering from a seek that never painted. It's asked for only after
+// a miss, since keeping the page rendering during the wait could hide what's being looked for.
+function missRecorder(misses) {
+    return (miss) => {
+        const record = { ...miss, hidden: document.hidden, nextPageFrameAfterMs: null };
+        misses.push(record);
+        const asked = performance.now();
+        requestAnimationFrame(() => {
+            record.nextPageFrameAfterMs = performance.now() - asked;
+        });
+    };
+}
+
 function log(line) {
     document.getElementById('log').textContent += `${line}\n`;
 }
@@ -81,6 +97,8 @@ async function runCase(testCase) {
     const video = makeVideo();
     const preview = testCase.withPreview ? makeVideo() : null;
     const result = { name: testCase.name };
+    const misses = [];
+    const onLongMiss = missRecorder(misses);
     // Shadows the method on this element, as a browser without it would have.
     if (testCase.noFrameCallback) video.requestVideoFrameCallback = undefined;
     try {
@@ -94,7 +112,7 @@ async function runCase(testCase) {
         // Checked first where it decides whether the frames mean anything, and after
         // capturing otherwise, so the first capture still follows a fresh load.
         if (testCase.mayNotSeek || testCase.mustNotSeek) {
-            const reachable = await canSeekNearEnd(video);
+            const reachable = await canSeekNearEnd(video, { onLongMiss });
             if (!reachable) {
                 result.status = 'flagged';
                 result.error = 'Flagged as not readable to the end';
@@ -112,6 +130,7 @@ async function runCase(testCase) {
             crop: { x: 0, y: 0, width: video.videoWidth, height: video.videoHeight },
             width: outputWidth,
             height: Math.round(outputWidth * video.videoHeight / video.videoWidth),
+            onLongMiss,
         });
 
         const wrong = [];
@@ -126,7 +145,7 @@ async function runCase(testCase) {
         result.wrongSample = wrong.slice(0, 8);
         result.capturedPerSecond = Number((grabber.stats.frames / (elapsed / 1000)).toFixed(1));
         result.stats = grabber.stats;
-        const flaggedWrongly = !testCase.mayNotSeek && !testCase.mayWarn && !(await canSeekNearEnd(video));
+        const flaggedWrongly = !testCase.mayNotSeek && !testCase.mayWarn && !(await canSeekNearEnd(video, { onLongMiss }));
         if (flaggedWrongly) result.error = 'Flagged as not readable to the end';
         result.status = wrong.length === 0 && sizeOk && !flaggedWrongly ? 'pass' : 'FAIL';
     } catch (error) {
@@ -134,6 +153,10 @@ async function runCase(testCase) {
         result.status = unsupported ? 'unsupported' : 'ERROR';
         result.error = String(error);
     } finally {
+        if (misses.length > 0) {
+            result.longMissCount = misses.length;
+            result.longMisses = misses.slice(0, LONG_MISSES_KEPT);
+        }
         removeVideo(video);
         if (preview) removeVideo(preview);
         URL.revokeObjectURL(url);

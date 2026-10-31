@@ -31,6 +31,7 @@ function printResults({ userAgent, results }) {
     for (const result of results) {
         console.log(`${result.status.padEnd(12)}${result.name.padEnd(42)}${describe(result)}`);
         if (result.wrong) console.log(`            ${JSON.stringify(result.wrongSample)}`);
+        if (result.longMisses && !PASSING.has(result.status)) console.log(`            ${result.longMissCount} long misses: ${JSON.stringify(result.longMisses)}`);
     }
 }
 

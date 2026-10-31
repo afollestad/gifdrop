@@ -57,12 +57,16 @@ export class VideoSeeker {
     #recentLatencyMs = 0;
     #shownMediaTime = null;
     #longSeekMisses = 0;
+    #onLongMiss;
 
     presentFallbacks = 0;
 
-    constructor(video, { signal } = {}) {
+    // `onLongMiss` hears what happened when a long seek ended with no new frame, for the
+    // capture suite to report, since that's when a wrong frame can get through.
+    constructor(video, { signal, onLongMiss } = {}) {
         this.#video = video;
         this.#signal = signal;
+        this.#onLongMiss = onLongMiss;
     }
 
     async seek(target) {
@@ -115,6 +119,9 @@ export class VideoSeeker {
             let watchdog = null;
             let lostSeekedCheck = null;
             let sameFrameConfirmed = false;
+            let seekedAfterMs = null;
+            let frameCallbacks = 0;
+            let lastMediaTime = null;
 
             const finish = (error) => {
                 clearTimeout(watchdog);
@@ -130,7 +137,22 @@ export class VideoSeeker {
                     reject(error);
                 } else {
                     this.#recentLatencyMs = nextRecentLatency(this.#recentLatencyMs, latencyMs);
-                    if (isLongSeek(distance) && latencyMs === null) this.#longSeekMisses++;
+                    if (isLongSeek(distance) && latencyMs === null) {
+                        this.#onLongMiss?.({
+                            target,
+                            before,
+                            waitedMs: performance.now() - began,
+                            seekedAfterMs,
+                            frameCallbacks,
+                            lastMediaTime,
+                            sameFrameConfirmed,
+                            earlierMisses: this.#longSeekMisses,
+                            currentTime: video.currentTime,
+                            readyState: video.readyState,
+                            seeking: video.seeking,
+                        });
+                        this.#longSeekMisses++;
+                    }
                     resolve();
                 }
             };
@@ -161,6 +183,8 @@ export class VideoSeeker {
             const watchFrames = () => {
                 frameHandle = video.requestVideoFrameCallback((now, metadata) => {
                     frameHandle = null;
+                    frameCallbacks++;
+                    lastMediaTime = metadata.mediaTime;
                     if (showsNewFrame(metadata.mediaTime, target, before)) {
                         this.#shownMediaTime = metadata.mediaTime;
                         latencyMs = performance.now() - began;
@@ -185,6 +209,7 @@ export class VideoSeeker {
 
             function onSeeked() {
                 seeked = true;
+                seekedAfterMs = performance.now() - began;
                 check();
             }
 
@@ -222,10 +247,10 @@ export class VideoSeeker {
 // frame arrives. A video that barely changes can also fail this, so it's for a
 // warning rather than for refusing the file. Browsers without frame callbacks can't
 // tell, and neither can a hidden tab, so it waits until it's back.
-export async function canSeekNearEnd(video, { signal } = {}) {
+export async function canSeekNearEnd(video, { signal, onLongMiss } = {}) {
     if (!video.requestVideoFrameCallback) return true;
     await whenVisible(signal);
-    const seeker = new VideoSeeker(video, { signal });
+    const seeker = new VideoSeeker(video, { signal, onLongMiss });
     try {
         await seeker.seek(seekTarget(video.duration * NEAR_END_SHARE, video.duration));
     } catch (error) {

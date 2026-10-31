@@ -18,12 +18,12 @@ export class FrameGrabber {
     #retries = 0;
     #hiddenPauses = 0;
 
-    constructor(video, { crop, width, height, signal, onPaused, onResumed }) {
+    constructor(video, { crop, width, height, signal, onPaused, onResumed, onLongMiss }) {
         this.#video = video;
         this.#signal = signal;
         this.#onPaused = onPaused;
         this.#onResumed = onResumed;
-        this.#seeker = new VideoSeeker(video, { signal });
+        this.#seeker = new VideoSeeker(video, { signal, onLongMiss });
         this.#reader = new FrameReader({ crop, width, height });
     }
 
