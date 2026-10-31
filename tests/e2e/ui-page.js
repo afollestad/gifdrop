@@ -235,11 +235,12 @@ const TESTS = {
         // Long enough for touch handles, whose hit areas are wide, to leave some of it uncovered.
         setField(app, app.byId('trim-end-text'), '0:02.0');
         const selection = app.byId('trim-selection');
-        const rect = selection.getBoundingClientRect();
-        const y = rect.top + rect.height / 2;
-        const x = rect.left + rect.width / 2;
+        // From the track, since Safari can report the selection's old size until the next frame.
+        const track = app.byId('trim-track').getBoundingClientRect();
+        const perSecond = track.width / Number(app.byId('trim-end').max);
+        const y = track.top + track.height / 2;
+        const x = track.left + perSecond;
         equal(app.doc.elementFromPoint(x, y), selection, 'reachable through the handles\' inputs');
-        const perSecond = app.byId('trim-track').getBoundingClientRect().width / Number(app.byId('trim-end').max);
         const fire = (type, clientX, pointerId = 1) => selection.dispatchEvent(new app.win.PointerEvent(type, { bubbles: true, cancelable: true, clientX, clientY: y, button: 0, pointerId, pointerType: 'mouse' }));
         // Real pointer capture needs a real pointer, so a synthetic one is allowed to refuse.
         selection.setPointerCapture = () => {};
