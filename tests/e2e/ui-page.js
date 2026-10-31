@@ -376,8 +376,13 @@ const TESTS = {
         app.byId('convert-button').click();
         await until(() => app.doc.body.dataset.screen === 'done', 'the result', 60000);
         const toggle = app.byId('result-toggle');
-        equal(toggle.getAttribute('aria-label'), 'Pause GIF', 'plays by default');
-        toggle.click();
+        // Starts paused for anyone who has asked for reduced motion, as CI's macOS has.
+        if (app.win.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            equal(toggle.getAttribute('aria-label'), 'Play GIF', 'starts paused with reduced motion');
+        } else {
+            equal(toggle.getAttribute('aria-label'), 'Pause GIF', 'plays by default');
+            toggle.click();
+        }
         equal(toggle.getAttribute('aria-label'), 'Play GIF', 'pauses');
         assert(app.byId('result-image').hidden, 'GIF hides');
         assert(!app.byId('result-poster').hidden, 'still shows');
