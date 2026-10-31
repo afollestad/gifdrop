@@ -185,7 +185,10 @@ export class VideoSeeker {
                 }
             };
 
+            // The seek has finished by now, and this wait has its own limit, so running out the
+            // watchdog here would report a stall that isn't one.
             const armFallback = () => {
+                clearTimeout(watchdog);
                 clearTimeout(fallback);
                 fallback = setTimeout(() => {
                     this.presentFallbacks++;

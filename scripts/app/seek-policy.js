@@ -17,6 +17,7 @@ const LATENCY_DECAY = 0.9;
 const LONG_SEEK = 0.25;
 const LONG_SEEK_FALLBACKS_MS = [5000, 1000, 250];
 const NO_CALLBACK_LONG_SEEK_FALLBACK_MS = 1000;
+const MAX_FALLBACK_MS = 10000;
 const RETRY_WAYPOINT_DISTANCE = 0.5;
 
 // The offset keeps the seek off a frame boundary, where rounding could land on
@@ -51,7 +52,12 @@ export function confirmsSameFrame(mediaTime, shownMediaTime, seeked) {
 // `longSeekMisses` counts long seeks that ended without a new frame. One means this video
 // has long gaps, so a repeat of the frame showing can be believed on long seeks too. The
 // first is never shortened, since a file cut off partway looks just the same.
-export function presentFallbackMs({ distance, recentLatencyMs, hasFrameCallback, sameFrameConfirmed = false, longSeekMisses = 0 }) {
+// One very slow seek must not hold up every seek after it for minutes, hence the limit.
+export function presentFallbackMs(seek) {
+    return Math.min(MAX_FALLBACK_MS, uncappedFallbackMs(seek));
+}
+
+function uncappedFallbackMs({ distance, recentLatencyMs, hasFrameCallback, sameFrameConfirmed = false, longSeekMisses = 0 }) {
     if (sameFrameConfirmed && (!isLongSeek(distance) || longSeekMisses > 0)) return Math.max(SAME_FRAME_CONFIRMED_MS, recentLatencyMs);
     const shortWait = Math.max(SAME_FRAME_FALLBACK_MS, recentLatencyMs * LATENCY_MARGIN);
     if (!isLongSeek(distance)) return shortWait;

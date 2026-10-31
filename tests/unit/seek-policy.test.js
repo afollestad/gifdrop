@@ -82,6 +82,12 @@ test('presentFallbackMs bounds a long jump when no callback can ever arrive', ()
     assert.equal(presentFallbackMs({ distance: 0.066, recentLatencyMs: 0, hasFrameCallback: false }), 150);
 });
 
+test('presentFallbackMs stays bounded after a very slow seek', () => {
+    assert.equal(presentFallbackMs({ distance: 0.066, recentLatencyMs: 4000, hasFrameCallback: true }), 10000);
+    assert.equal(presentFallbackMs({ distance: 10, recentLatencyMs: 4000, hasFrameCallback: true }), 10000);
+    assert.equal(presentFallbackMs({ distance: 0.066, recentLatencyMs: 20000, hasFrameCallback: true, sameFrameConfirmed: true }), 10000);
+});
+
 test('retryWaypoint stops short of the target, on the side the seek came from', () => {
     assert.equal(retryWaypoint(10, 0), 9.5);
     assert.equal(retryWaypoint(1, 9), 1.5);

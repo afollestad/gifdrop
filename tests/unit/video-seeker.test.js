@@ -12,12 +12,14 @@ class FakeVideo extends EventTarget {
     seeks = [];
     #time;
     #paint;
+    #seekedAfterMs;
     #callback = null;
 
-    constructor({ at = 0, paint = () => null } = {}) {
+    constructor({ at = 0, paint = () => null, seekedAfterMs = () => 0 } = {}) {
         super();
         this.#time = at;
         this.#paint = paint;
+        this.#seekedAfterMs = seekedAfterMs;
     }
 
     get currentTime() {
@@ -27,11 +29,16 @@ class FakeVideo extends EventTarget {
     set currentTime(position) {
         this.#time = position;
         const mediaTime = this.#paint(position, this.seeks.length);
+        const delayMs = this.#seekedAfterMs(this.seeks.length);
         this.seeks.push(position);
-        queueMicrotask(() => {
+        this.seeking = true;
+        const land = () => {
+            this.seeking = false;
             this.dispatchEvent(new Event('seeked'));
             if (mediaTime !== null) this.#callback?.(0, { mediaTime });
-        });
+        };
+        if (delayMs > 0) setTimeout(land, delayMs);
+        else queueMicrotask(land);
     }
 
     requestVideoFrameCallback(callback) {
@@ -44,6 +51,8 @@ class FakeVideo extends EventTarget {
     }
 }
 
+let now;
+
 // Runs the mocked clock until the promise settles, so waits take no real time.
 async function settled(promise) {
     let done = false;
@@ -53,18 +62,22 @@ async function settled(promise) {
     promise.then(finish, finish);
     while (!done) {
         await new Promise(setImmediate);
+        now += 50;
         mock.timers.tick(50);
     }
     return promise;
 }
 
 beforeEach(() => {
+    now = 0;
     mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
+    mock.method(performance, 'now', () => now);
     globalThis.document = { hidden: false, addEventListener() {}, removeEventListener() {} };
 });
 
 afterEach(() => {
     mock.timers.reset();
+    mock.restoreAll();
     delete globalThis.document;
 });
 
@@ -136,6 +149,23 @@ test('a cancel while passing through the waypoint stops there', async () => {
     });
     await assert.rejects(settled(new VideoSeeker(video, { signal: controller.signal }).seek(10)), { name: 'AbortError' });
     assert.deepEqual(video.seeks, [10, 9.5]);
+});
+
+test('a same-frame seek after a slow one is not taken for a stall', async () => {
+    const video = new FakeVideo({ paint: (position, index) => (index === 0 ? position : null), seekedAfterMs: (index) => (index === 0 ? 4000 : 0) });
+    const seeker = new VideoSeeker(video);
+    assert.equal(await settled(seeker.seek(0.1)), true);
+    assert.equal(await settled(seeker.seek(0.11)), false);
+});
+
+test('waiting for a frame after a slow `seeked` is not taken for a stall', async () => {
+    const video = new FakeVideo({ seekedAfterMs: () => 12000 });
+    assert.equal(await settled(new VideoSeeker(video).seek(10)), false);
+});
+
+test('a seek that never finishes is still a stall', async () => {
+    const video = new FakeVideo({ seekedAfterMs: () => 60000 });
+    await assert.rejects(settled(new VideoSeeker(video).seek(10)), { name: 'SeekStalledError' });
 });
 
 test('canSeekNearEnd goes by how the retry ended', async () => {

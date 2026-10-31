@@ -59,7 +59,7 @@ Keep browser-free logic in pure modules so Node can test it, one responsibility 
 
 Each of these was measured, and the code's comments say why. Don't simplify them away without rerunning the capture suite in every browser.
 
-- **Seeking:** `seeked` can come before the paint in Safari and iOS, and a frame callback may describe an older frame, so a capture waits for both, judged by `seek-policy.js`. Same-frame seeks get no callback in Safari, hence the fallback, and Chrome can repeat the old frame just before a new one, so that only shortens the wait.
+- **Seeking:** `seeked` can come before the paint in Safari and iOS, and a frame callback may describe an older frame, so a capture waits for both, judged by `seek-policy.js`. Same-frame seeks get no callback in Safari, hence the fallback, and Chrome can repeat the old frame just before a new one, so that only shortens the wait. That wait scales with recent seeks, so the stall watchdog stops once it starts, or one slow seek makes the next look stalled.
 - **iOS:** frame data is held back until a video has played, so `video-source.js` plays and pauses it. The first seek after that never paints, and repeating the position or seeking to 0 doesn't help, so a seek near the start is spent first. Low Power Mode refuses the play, which needs a tap.
 - **Silent freezes:** a file cut off partway, or WebM with no seek index in Firefox, reports success and its full length as seekable while repeating an earlier frame. Only `canSeekNearEnd` notices. Playing it through first doesn't help Firefox.
 - **`willReadFrequently`** stays off. It sounds right, but made reads of HDR video about 40 times slower in Chrome.
