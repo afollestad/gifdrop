@@ -724,7 +724,14 @@ body[data-view="converting"] .crop-box {
     outline-offset: 2px;
 }
 
+/* A touch thumb's hit area reaches .6rem past its dot on each side, so the input runs that
+   far past the rail, which lets the dot reach both of the rail's ends. */
 @media (pointer: coarse) {
+    .trim-range {
+        inset: 0 -.6rem;
+        width: calc(100% + 1.2rem);
+    }
+
     .trim-range::-webkit-slider-thumb {
         width: var(--hit);
         height: var(--hit);

@@ -232,7 +232,8 @@ const TESTS = {
     async 'the trimmed stretch can be dragged, keeping its length'(app) {
         pick(app, await fixture('barcode.mp4'));
         await waitForEditing(app);
-        setField(app, app.byId('trim-end-text'), '0:01.0');
+        // Long enough for touch handles, whose hit areas are wide, to leave some of it uncovered.
+        setField(app, app.byId('trim-end-text'), '0:02.0');
         const selection = app.byId('trim-selection');
         const rect = selection.getBoundingClientRect();
         const y = rect.top + rect.height / 2;
@@ -258,8 +259,8 @@ const TESTS = {
 
         slide(0.5, 'pointerup');
         equal(app.byId('trim-start-text').value, '0:01.0', 'moved along');
-        equal(app.byId('trim-end-text').value, '0:02.0', 'the end comes with it');
-        equal(app.byId('trim-length').textContent, '0:01.0 selected', 'same length');
+        equal(app.byId('trim-end-text').value, '0:03.0', 'the end comes with it');
+        equal(app.byId('trim-length').textContent, '0:02.0 selected', 'same length');
 
         fire('pointerdown', x);
         fire('pointermove', x + perSecond, 2);
@@ -269,7 +270,7 @@ const TESTS = {
 
         slide(100, 'pointerup');
         equal(Number(app.byId('trim-end').value), Number(app.byId('trim-end').max), 'stops at the end');
-        equal(app.byId('trim-length').textContent, '0:01.0 selected', 'still the same length');
+        equal(app.byId('trim-length').textContent, '0:02.0 selected', 'still the same length');
 
         const before = app.byId('trim-start').value;
         slide(-100, 'pointercancel');
