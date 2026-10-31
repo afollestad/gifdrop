@@ -29,6 +29,8 @@ export class GifWriter {
     #pending;
     #pendingDelay = 0;
     #hasPending = false;
+    #pendingSlot = 0;
+    #frameSizes = [];
 
     // For a boomerang's return trip, the full picture and delay of each frame.
     #pictures = [];
@@ -54,18 +56,28 @@ export class GifWriter {
         return this.#bytesWritten;
     }
 
+    // What each frame added with addFrame cost, the first including the header and
+    // palette, and a frame that only extended the one before costing nothing. A
+    // frame's entry is final once the next has been added, or after finish().
+    get frameSizes() {
+        return this.#frameSizes;
+    }
+
     // Takes the remapper's output, which it copies, since the remapper reuses both
     // buffers. `changed` is how many pixels differ from the frame before.
     addFrame(indices, composite, delay, changed) {
         if (this.#hasPending && changed === 0) {
             this.#pendingDelay += delay;
             if (this.#boomerang) this.#pictureDelays[this.#pictureDelays.length - 1] += delay;
+            this.#frameSizes.push(0);
             return;
         }
         this.#flushPending();
         this.#pending.set(indices);
         this.#pendingDelay = delay;
         this.#hasPending = true;
+        this.#pendingSlot = this.#frameSizes.length;
+        this.#frameSizes.push(0);
         if (this.#boomerang) {
             this.#pictures.push(composite.slice());
             this.#pictureDelays.push(delay);
@@ -83,7 +95,9 @@ export class GifWriter {
 
     #flushPending() {
         if (!this.#hasPending) return;
+        const before = this.#bytesWritten;
         this.#write(this.#pending, this.#pendingDelay);
+        this.#frameSizes[this.#pendingSlot] = this.#bytesWritten - before;
         this.#hasPending = false;
     }
 

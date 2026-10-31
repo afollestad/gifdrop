@@ -3,7 +3,9 @@
 
 const SEEK_OFFSET = 0.001;
 const MEDIA_TIME_TOLERANCE = 0.002;
+const MEDIA_TIME_EPSILON = 1e-6;
 const SAME_FRAME_FALLBACK_MS = 150;
+const SAME_FRAME_CONFIRMED_MS = 40;
 const LATENCY_MARGIN = 4;
 const LATENCY_DECAY = 0.9;
 
@@ -30,11 +32,21 @@ export function showsNewFrame(mediaTime, target, before) {
     return target <= before || mediaTime > before;
 }
 
+// Some browsers present the same frame again after a seek within it, which suggests
+// no new frame is coming. It's only a suggestion, since Chrome can also do this just
+// before presenting a new one, so it shortens the wait rather than ending it. Only
+// after `seeked`, since Safari's leftover callbacks from before a seek can also
+// repeat a time.
+export function confirmsSameFrame(mediaTime, shownMediaTime, seeked) {
+    return seeked && shownMediaTime !== null && Math.abs(mediaTime - shownMediaTime) < MEDIA_TIME_EPSILON;
+}
+
 // How long after `seeked` to wait for a frame callback before capturing anyway.
 // A seek within one frame may never get a callback, so there has to be a limit,
 // but `seeked` can lead the paint by however long decoding takes: a long jump
 // through a long keyframe interval takes far more than a short hop.
-export function presentFallbackMs({ distance, recentLatencyMs, hasFrameCallback }) {
+export function presentFallbackMs({ distance, recentLatencyMs, hasFrameCallback, sameFrameConfirmed = false }) {
+    if (distance <= LONG_SEEK && sameFrameConfirmed) return Math.max(SAME_FRAME_CONFIRMED_MS, recentLatencyMs);
     const shortWait = Math.max(SAME_FRAME_FALLBACK_MS, recentLatencyMs * LATENCY_MARGIN);
     if (distance <= LONG_SEEK) return shortWait;
     return Math.max(shortWait, hasFrameCallback ? LONG_SEEK_FALLBACK_MS : NO_CALLBACK_LONG_SEEK_FALLBACK_MS);

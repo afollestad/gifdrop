@@ -1,6 +1,10 @@
 // Reads the frame showing in a <video> as RGBA pixels at the output size.
 
-const CONTEXT_OPTIONS = { colorSpace: 'srgb', willReadFrequently: true, alpha: false };
+// Despite reading every frame back, willReadFrequently stays off: forcing a software
+// canvas made each read of HDR video take about 50ms instead of 1ms in Chrome, and 48ms
+// instead of 5ms in Safari, with no visible change in color. Saying false outright also
+// stops Chrome switching to software on its own after a few reads.
+const CONTEXT_OPTIONS = { colorSpace: 'srgb', willReadFrequently: false, alpha: false };
 const MAX_DIRECT_REDUCTION = 2;
 
 function makeContext(width, height) {

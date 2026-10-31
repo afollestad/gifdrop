@@ -23,6 +23,7 @@ const TYPES = {
     '.mp4': 'video/mp4',
     '.webm': 'video/webm',
     '.m4a': 'audio/mp4',
+    '.mov': 'video/quicktime',
 };
 
 function readBody(request) {
@@ -61,7 +62,8 @@ async function serveFile(request, response, path) {
     createReadStream(path).pipe(response);
 }
 
-export async function startServer(port = 0) {
+// `footagePath` serves one file from anywhere on disk, at /footage.
+export async function startServer(port = 0, { footagePath } = {}) {
     const waiters = new Map();
     const arrived = new Map();
 
@@ -85,6 +87,10 @@ export async function startServer(port = 0) {
                 } else {
                     arrived.set(name, body);
                 }
+                return;
+            }
+            if (footagePath && url.pathname === '/footage') {
+                await serveFile(request, response, footagePath);
                 return;
             }
             const pathname = decodeURIComponent(url.pathname);

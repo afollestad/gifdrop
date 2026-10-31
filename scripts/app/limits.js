@@ -12,7 +12,7 @@ export const QUALITY_PRESETS = {
     high: { colors: 255, tolerance: 2.5, ditherScale: 2 },
 };
 
-export const DEFAULTS = { trimSeconds: 5, width: 480, fps: 15, speed: 1, quality: 'balanced', loop: 'forever' };
+export const DEFAULTS = { trimSeconds: 5, longestEdge: 480, fps: 15, speed: 1, quality: 'balanced', loop: 'forever' };
 
 export const SIZE_LIMITS = { minWidth: 64, maxWidth: 1280, maxHeight: 1280 };
 

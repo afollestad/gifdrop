@@ -131,6 +131,20 @@ export async function loadVideo(video, url) {
     await resolveDuration(video);
 }
 
+// Whether the picture is HDR, in which case the browser tone-maps it down for the
+// GIF and colors may look flatter than in the original.
+export function isHdr(video) {
+    if (typeof VideoFrame === 'undefined') return false;
+    try {
+        const frame = new VideoFrame(video);
+        const { transfer } = frame.colorSpace;
+        frame.close();
+        return transfer === 'pq' || transfer === 'hlg';
+    } catch {
+        return false;
+    }
+}
+
 // Finishes a load that failed as `blocked`. Call this directly from a tap's
 // handler, since play() has to start within the tap.
 export async function resumeBlockedLoad(video) {

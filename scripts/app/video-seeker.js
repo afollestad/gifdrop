@@ -2,7 +2,7 @@
 // `seeked` alone isn't enough, since Safari and iOS can paint after it, and
 // requestVideoFrameCallback alone isn't either, since a seek that lands on the
 // frame already showing may never fire it. seek-policy.js decides between them.
-import { nextRecentLatency, presentFallbackMs, seekTarget, showsNewFrame } from './seek-policy.js';
+import { confirmsSameFrame, nextRecentLatency, presentFallbackMs, seekTarget, showsNewFrame } from './seek-policy.js';
 
 const SEEK_WATCHDOG_MS = 15000;
 const INITIAL_FRAME_WAIT_MS = 150;
@@ -34,6 +34,7 @@ export class VideoSeeker {
     #signal;
     #settled = false;
     #recentLatencyMs = 0;
+    #shownMediaTime = null;
 
     presentFallbacks = 0;
 
@@ -62,8 +63,9 @@ export class VideoSeeker {
                 resolve();
             }, INITIAL_FRAME_WAIT_MS);
             if (video.requestVideoFrameCallback) {
-                handle = video.requestVideoFrameCallback(() => {
+                handle = video.requestVideoFrameCallback((now, metadata) => {
                     clearTimeout(timer);
+                    this.#shownMediaTime = metadata.mediaTime;
                     resolve();
                 });
             }
@@ -88,6 +90,7 @@ export class VideoSeeker {
             let frameHandle = null;
             let fallback = null;
             let watchdog = null;
+            let sameFrameConfirmed = false;
 
             const finish = (error) => {
                 clearTimeout(watchdog);
@@ -111,26 +114,37 @@ export class VideoSeeker {
                 if (latencyMs !== null) {
                     finish();
                 } else if (fallback === null) {
-                    fallback = setTimeout(() => {
-                        this.presentFallbacks++;
-                        finish();
-                    }, presentFallbackMs({
-                        distance: Math.abs(target - before),
-                        recentLatencyMs: this.#recentLatencyMs,
-                        hasFrameCallback,
-                    }));
+                    armFallback();
                 }
+            };
+
+            const armFallback = () => {
+                clearTimeout(fallback);
+                fallback = setTimeout(() => {
+                    this.presentFallbacks++;
+                    finish();
+                }, presentFallbackMs({
+                    distance: Math.abs(target - before),
+                    recentLatencyMs: this.#recentLatencyMs,
+                    hasFrameCallback,
+                    sameFrameConfirmed,
+                }));
             };
 
             const watchFrames = () => {
                 frameHandle = video.requestVideoFrameCallback((now, metadata) => {
                     frameHandle = null;
                     if (showsNewFrame(metadata.mediaTime, target, before)) {
+                        this.#shownMediaTime = metadata.mediaTime;
                         latencyMs = performance.now() - began;
                         check();
-                    } else {
-                        watchFrames();
+                        return;
                     }
+                    if (!sameFrameConfirmed && confirmsSameFrame(metadata.mediaTime, this.#shownMediaTime, seeked)) {
+                        sameFrameConfirmed = true;
+                        armFallback();
+                    }
+                    watchFrames();
                 });
             };
 

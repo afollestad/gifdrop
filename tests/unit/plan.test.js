@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { outputFrameCount, outputSize, planFrames } from '../../scripts/app/plan.js';
+import { outputFrameCount, outputSize, planFrames, widthForLongestEdge } from '../../scripts/app/plan.js';
 
 const LIMITS = { maxWidth: 1280, maxHeight: 1280 };
 
@@ -52,6 +52,12 @@ test('outputFrameCount adds a return trip without repeating the ends', () => {
     assert.equal(outputFrameCount(5, 'boomerang'), 8);
     assert.equal(outputFrameCount(2, 'boomerang'), 2);
     assert.equal(outputFrameCount(1, 'boomerang'), 1);
+});
+
+test('widthForLongestEdge treats portrait and landscape alike, without upscaling', () => {
+    assert.equal(widthForLongestEdge({ width: 1920, height: 1080 }, 480), 480);
+    assert.equal(widthForLongestEdge({ width: 720, height: 1280 }, 480), 270);
+    assert.equal(widthForLongestEdge({ width: 320, height: 180 }, 480), 320);
 });
 
 test('outputSize keeps the crop shape and never upscales', () => {

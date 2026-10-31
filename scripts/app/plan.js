@@ -27,9 +27,23 @@ export function planFrames({ trimStart, trimEnd, fps, speed }) {
     return { times, delays };
 }
 
+// Up to `max` indices spread evenly across `count`, in order.
+export function evenlySpacedIndices(count, max) {
+    const picked = Math.min(count, max);
+    return Array.from({ length: picked }, (_, i) => Math.floor(i * count / picked));
+}
+
 // A boomerang plays E0..Ek, then E(k-1)..E1, so neither end shows twice in a row.
 export function outputFrameCount(frames, loop) {
     return loop === 'boomerang' && frames > 1 ? 2 * (frames - 1) : frames;
+}
+
+// The width that makes a crop's longest edge `longestEdge`, so a portrait video gets
+// the same-sized GIF as a landscape one rather than one nearly twice as tall as wide
+// at the same width, and several times the file size.
+export function widthForLongestEdge(crop, longestEdge) {
+    const scale = Math.min(1, longestEdge / Math.max(crop.width, crop.height));
+    return Math.max(1, Math.round(crop.width * scale));
 }
 
 // Keeps the crop's shape, and at least one pixel, within both limits.

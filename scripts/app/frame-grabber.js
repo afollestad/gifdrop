@@ -29,16 +29,18 @@ export class FrameGrabber {
     #video;
     #signal;
     #onPaused;
+    #onResumed;
     #seeker;
     #reader;
     #frames = 0;
     #retries = 0;
     #hiddenPauses = 0;
 
-    constructor(video, { crop, width, height, signal, onPaused }) {
+    constructor(video, { crop, width, height, signal, onPaused, onResumed }) {
         this.#video = video;
         this.#signal = signal;
         this.#onPaused = onPaused;
+        this.#onResumed = onResumed;
         this.#seeker = new VideoSeeker(video, { signal });
         this.#reader = new FrameReader({ crop, width, height });
     }
@@ -59,6 +61,7 @@ export class FrameGrabber {
                 this.#hiddenPauses++;
                 this.#onPaused?.();
                 await whenVisible(this.#signal);
+                this.#onResumed?.();
             }
             await this.#seekWithRetry(time);
             if (!document.hidden) break;

@@ -5,6 +5,7 @@
     "scripts": {
         "fixtures": "tests/make-fixtures.sh",
         "test": "node --test \"tests/unit/*.test.js\"",
-        "test:e2e": "node tests/e2e/capture.mjs"
+        "test:e2e": "node tests/e2e/run.mjs",
+        "test:footage": "node tests/e2e/footage.mjs"
     }
 }
