@@ -436,24 +436,22 @@ body:not([data-view="empty"]) .hero-copy h1 {
     contain: layout style;
 }
 
-/* Centered beside the video, which stays put so that starting a conversion moves nothing. */
-body[data-view="converting"] .workspace-side {
-    align-self: center;
-}
-
-/* With the video gone, the result takes the middle of the window. */
+/* With the settings out of the way, what's left takes the middle of the window. */
+body[data-view="converting"] main,
 body[data-view="done"] main {
     display: flex;
     flex-direction: column;
     justify-content: center;
 }
 
-/* And the GIF and its panel center as a pair, whatever the GIF's width. */
-body[data-view="done"] .workspace {
-    grid-template-columns: minmax(0, max-content) minmax(19rem, 23rem);
-    justify-content: center;
-    align-items: center;
-    column-gap: 3rem;
+/* Nothing here can be changed until this finishes, so only the crop's shading stays. */
+body[data-view="converting"] .trim,
+body[data-view="converting"] .crop-handle {
+    display: none;
+}
+
+body[data-view="converting"] .crop-box {
+    border-color: transparent;
 }
 
 /* Sized from the video's shape as soon as its metadata arrives, so nothing moves when
@@ -1094,6 +1092,38 @@ progress::-moz-progress-bar {
     grid-row: 1;
 }
 
+/* The picture and its details share one card, since two separate boxes of different sizes
+   can't line up at both edges, however they're centered. */
+@media not all and (max-width: 860px) {
+    body[data-view="converting"] .workspace,
+    body[data-view="done"] .workspace {
+        grid-template-columns: minmax(0, max-content) 21rem;
+        align-self: center;
+        align-items: center;
+        gap: 2rem;
+        width: fit-content;
+        max-width: 100%;
+        padding: 1.5rem;
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius);
+        background: var(--glass);
+        box-shadow: 0 .75rem 2rem -1.25rem var(--glass-shadow);
+    }
+
+    #progress-panel,
+    #result-panel {
+        padding: 0;
+        border: none;
+        background: none;
+        box-shadow: none;
+    }
+
+    body[data-view="converting"] .stage {
+        width: calc(50vh * var(--video-aspect));
+        max-width: 100%;
+    }
+}
+
 /* Drop overlay ----------------------------------------------------------- */
 
 /* The only drop target while dragging, with nothing inside able to take events. */
@@ -1176,19 +1206,13 @@ progress::-moz-progress-bar {
         scroll-padding-bottom: 7rem;
     }
 
-    .workspace,
-    body[data-view="done"] .workspace {
+    .workspace {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    /* A tall video can fill the screen, so progress goes above it to stay in view, and
-       the trim, which can't be used until this finishes, makes way. */
+    /* A tall video can fill the screen, so progress goes above it to stay in view. */
     body[data-view="converting"] .workspace-side {
         order: -1;
-    }
-
-    body[data-view="converting"] .trim {
-        display: none;
     }
 
     /* The GIF comes first, with nothing left of the stage above it. */
