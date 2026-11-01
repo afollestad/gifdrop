@@ -14,6 +14,9 @@
     --on-accent: #ffffff;
     --danger: #a8201a;
     --warn: #8a4b00;
+    /* Behind the logo, at least 3:1 with its main blues, #0057d5 and #0186fb.
+       Matches af.codes. */
+    --logo-circle: #ffffff;
     /* Every stop holds at least 3:1 even where the hero's glow is strongest. */
     --title-gradient: linear-gradient(100deg, #012f9e 5%, #0144d6 50%, #0a6ee6 95%);
     --glass: rgba(255, 255, 255, .7);

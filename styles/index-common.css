@@ -152,14 +152,16 @@ h3[tabindex]:focus-visible,
 
 .brand-logo {
     display: inline-flex;
+    /* The padding keeps the monogram's far corners inside the circle. */
     padding: .25rem;
+    background: var(--logo-circle);
+    box-shadow: 0 2px 6px var(--icon-shadow);
     border-radius: 50%;
 }
 
 .brand-logo img {
     width: 2rem;
     height: 2rem;
-    border-radius: 50%;
 }
 
 .top-btn {

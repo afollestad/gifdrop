@@ -14,6 +14,9 @@
     --on-accent: #060d1e;
     --danger: #ff9a8f;
     --warn: #f5c26b;
+    /* Behind the logo, at least 3:1 with its main blues, #0057d5 and #0186fb.
+       Matches af.codes. */
+    --logo-circle: #05070d;
     --title-gradient: linear-gradient(100deg, #d4f6ff 5%, #2ae0fd 50%, #2f9bff 95%);
     --glass: rgba(255, 255, 255, .05);
     --glass-strong: rgba(255, 255, 255, .08);

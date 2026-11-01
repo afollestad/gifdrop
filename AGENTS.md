@@ -83,6 +83,7 @@ Each of these was measured, and the code's comments say why. Don't simplify them
 - `favicon.ico`, `favicon.png` and `apple-touch-icon.png` are as supplied.
 - `images/app-icon.png` is the supplied 1254x1254 icon at 256x256, with its plate's edge redrawn as a superellipse (exponent 5), since the source's alpha has stray specks around it. Its edges were fitted at x 52-1202 and y 56-1199.
 - `images/og-image.png` comes from `og-image/render.sh`. Re-render it when the icon, the name or the dark theme's colors change.
+- The header's logo is `https://af.codes/images/af.png`, so there's no copy here. It loads with the page, before any video is picked, so the `ui` suite's check for network requests after load still holds. It sits uncropped on a circle filled with `--logo-circle`, white in the light theme and near-black in the dark one, with a drop shadow in `--icon-shadow`. Its values in the theme sheets match af.codes' and hold at least 3:1 with the logo's main blues, `#0057d5` and `#0186fb`, so change them together.
 
 ## Known limits
 
