@@ -395,31 +395,58 @@ body:not([data-view="empty"]) .hero-copy h1 {
     }
 }
 
+/* For the skills' container query below. */
+.picker {
+    container-type: inline-size;
+}
+
+/* Three short columns, even on phones, so they don't stack into a tall list. */
 .skills {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    max-width: 52rem;
-    margin: 3rem auto 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: 44rem;
+    margin: 2.25rem auto 0;
     text-align: center;
 }
 
 .skill {
-    padding: .25rem 1.25rem;
+    padding: .1rem 1rem;
 }
 
 .skill + .skill {
     border-left: 1px solid var(--divider);
 }
 
-.skill h2 {
-    font-size: 1.05rem;
+.skill svg {
+    display: block;
+    margin: 0 auto .3rem;
     color: var(--accent-text);
 }
 
+.skill h2 {
+    font-size: 1rem;
+    line-height: 1.35;
+}
+
 .skill p {
-    margin-top: .35rem;
-    font-size: .95rem;
+    margin-top: .1rem;
+    font-size: .9rem;
+    line-height: 1.4;
     color: var(--secondary);
+}
+
+/* Three columns need about 15rem before their longest words spill into each other, which
+   a phone falls short of once text is enlarged, as Safari's text size setting does. A
+   media query wouldn't notice that, since its units ignore the page's font size. */
+@container (max-width: 15rem) {
+    .skills {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+    }
+
+    .skill + .skill {
+        border-left: none;
+    }
 }
 
 /* Workspace -------------------------------------------------------------- */
@@ -1296,13 +1323,15 @@ progress::-moz-progress-bar {
     }
 
     .skills {
-        grid-template-columns: 1fr;
-        gap: 1.25rem;
-        margin-top: 2.25rem;
+        margin-top: 1.75rem;
     }
 
-    .skill + .skill {
-        border-left: none;
+    .skill {
+        padding: 0 .5rem;
+    }
+
+    .skill p {
+        font-size: .85rem;
     }
 
     .crop-fields {

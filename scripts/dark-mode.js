@@ -31,7 +31,7 @@
     function applyThemeColor(theme) {
         // Both theme-color metas are media-scoped, so an override has to
         // overwrite each of them; whichever one the browser picks must agree.
-        var themeColor = theme === 'dark' ? '#060d1e' : '#f4f9ff';
+        var themeColor = theme === 'dark' ? '#031619' : '#f1fbfb';
         var metas = document.querySelectorAll('meta[name="theme-color"]');
         for (var i = 0; i < metas.length; i++) {
             metas[i].content = themeColor;

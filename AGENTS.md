@@ -18,7 +18,7 @@ After changing files, architecture, conventions or behavior, check whether this 
 
 ## Look and theming
 
-- Colors come from the app icon's deep blue and cyan. The stylesheets are hand-written on the same base as af.codes and the app sites (`gh-pages` on Alveary, Chromahora and Carouline), so carry layout changes across from them rather than letting them drift.
+- Colors are teal, built from the app icon's cyan, so the site doesn't look like af.codes' navy and blue. Keep it that way. The stylesheets are hand-written on the same base as af.codes and the app sites (`gh-pages` on Alveary, Chromahora and Carouline), so carry layout changes across from them rather than letting them drift. The exception is `.skills`, which here stays three short columns on phones so it doesn't take up their height, stacking only when enlarged text wouldn't fit.
 - `styles/index-light.css` and `index-dark.css` hold the color tokens and the hero's glow, and `index-common.css` holds everything theme-independent. Both theme sheets ship on every load, media-scoped to `prefers-color-scheme`, so the page follows the OS with no JavaScript. `scripts/dark-mode.js` only steps in when the toggle stores an override. Keep its colors in step with each sheet's `--bg`, and with `index.html`'s `theme-color` metas.
 - Text tokens hold at least 4.5:1 on `--bg` and on the glow's strongest point, and the title gradient holds 3:1. Re-check these when changing colors.
 
@@ -80,8 +80,7 @@ Each of these was measured, and the code's comments say why. Don't simplify them
 
 ## Images
 
-- `favicon.ico`, `favicon.png` and `apple-touch-icon.png` are as supplied.
-- `images/app-icon.png` is the supplied 1254x1254 icon at 256x256, with its plate's edge redrawn as a superellipse (exponent 5), since the source's alpha has stray specks around it. Its edges were fitted at x 52-1202 and y 56-1199.
+- `favicon.ico`, `favicon.png`, `apple-touch-icon.png` and `images/app-icon.png` are as supplied, recolored teal to match the theme sheets. The app icon's 1024x1024 master isn't in the repo. Its plate's edge was already masked clean, so check any replacement for stray alpha specks around the tile.
 - `images/og-image.png` comes from `og-image/render.sh`. Re-render it when the icon, the name or the dark theme's colors change.
 - The header's logo is `https://af.codes/images/af.png`, so there's no copy here. It loads with the page, before any video is picked, so the `ui` suite's check for network requests after load still holds. It sits uncropped on a circle filled with `--logo-circle`, white in the light theme and near-black in the dark one, with a drop shadow in `--icon-shadow`. Its values in the theme sheets match af.codes' and hold at least 3:1 with the logo's main blues, `#0057d5` and `#0186fb`, so change them together.
 
