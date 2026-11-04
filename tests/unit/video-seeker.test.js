@@ -96,9 +96,28 @@ test('the first long miss goes somewhere nearby and tries again', async () => {
 test('passing through the waypoint needs no frame and counts as nothing', async () => {
     const misses = [];
     const video = new FakeVideo();
-    const seeker = new VideoSeeker(video, { onLongMiss: (miss) => misses.push(miss) });
+    const seeker = new VideoSeeker(video, { onMiss: (miss) => misses.push(miss) });
     assert.equal(await settled(seeker.seek(10)), false);
-    assert.deepEqual(misses.map(({ target, before, earlierMisses }) => [target, before, earlierMisses]), [[10, 0, 0], [10, 9.5, 1]]);
+    const reported = misses.map(({ target, before, first, earlierLongMisses }) => [target, before, first, earlierLongMisses]);
+    assert.deepEqual(reported, [[10, 0, true, 0], [10, 9.5, false, 1]]);
+});
+
+test('a first seek that misses is reported however short, and later short ones are not', async () => {
+    const misses = [];
+    const video = new FakeVideo({ at: 0.05 });
+    const seeker = new VideoSeeker(video, { onMiss: (miss) => misses.push(miss) });
+    assert.equal(await settled(seeker.seek(0.001)), false);
+    assert.equal(await settled(seeker.seek(0.068)), false);
+    assert.deepEqual(misses.map(({ target, first, shownMediaTime }) => [target, first, shownMediaTime]), [[0.001, true, null]]);
+});
+
+test('a miss reports the frame last known to be showing', async () => {
+    const misses = [];
+    const video = new FakeVideo({ paint: (position, index) => (index === 0 ? 0.0667 : null) });
+    const seeker = new VideoSeeker(video, { onMiss: (miss) => misses.push(miss) });
+    assert.equal(await settled(seeker.seek(0.068)), true);
+    assert.equal(await settled(seeker.seek(10)), false);
+    assert.deepEqual(misses.map(({ target, first, shownMediaTime }) => [target, first, shownMediaTime]), [[10, false, 0.0667], [10, false, 0.0667]]);
 });
 
 test('only the first long miss is tried again', async () => {

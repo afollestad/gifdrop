@@ -3,6 +3,7 @@
 // time they were asked for. No gesture is involved, so this also shows whether
 // an untouched video paints on iOS.
 import { FrameGrabber } from '/scripts/app/frame-grabber.js';
+import { FrameReader } from '/scripts/app/frame-reader.js';
 import { canSeekNearEnd } from '/scripts/app/video-seeker.js';
 import { loadVideo, releaseVideo, resumeBlockedLoad, VideoLoadError } from '/scripts/app/video-source.js';
 import { readBarcode } from '/tests/barcode.js';
@@ -20,7 +21,8 @@ async function fixtureUrl(src) {
 }
 const frameAt30 = (t) => Math.floor(t * 30);
 
-const LONG_MISSES_KEPT = 5;
+const MISSES_KEPT = 5;
+const READ_AGAIN_AFTER_MS = 1000;
 
 // Frame callbacks need the page to be rendering, so a slow or missing next frame tells a
 // page that had stopped rendering from a seek that never painted. It's asked for only after
@@ -62,7 +64,9 @@ async function startPreview(preview, url) {
     }
 }
 
-async function captureAll(video, testCase, grabber, wrong) {
+// The first wrong frame is read again a moment later, to tell a frame that painted late from
+// one that never did.
+async function captureAll(video, testCase, grabber, wrong, readAgain) {
     const speed = testCase.speed ?? 1;
     const start = testCase.start ?? 0;
     const frameAt = testCase.frameAt ?? frameAt30;
@@ -74,7 +78,14 @@ async function captureAll(video, testCase, grabber, wrong) {
         const image = await grabber.grab(t);
         const got = readBarcode(image, testCase.axis);
         const expected = frameAt(t + 0.001);
-        if (got !== expected) wrong.push({ i, t: Number(t.toFixed(4)), expected, got });
+        if (got !== expected) {
+            const frame = { i, t: Number(t.toFixed(4)), expected, got };
+            if (wrong.length === 0) {
+                await new Promise((resolve) => setTimeout(resolve, READ_AGAIN_AFTER_MS));
+                frame.later = readAgain();
+            }
+            wrong.push(frame);
+        }
     }
     return count;
 }
@@ -98,7 +109,7 @@ async function runCase(testCase) {
     const preview = testCase.withPreview ? makeVideo() : null;
     const result = { name: testCase.name };
     const misses = [];
-    const onLongMiss = missRecorder(misses);
+    const onMiss = missRecorder(misses);
     // Shadows the method on this element, as a browser without it would have.
     if (testCase.noFrameCallback) video.requestVideoFrameCallback = undefined;
     try {
@@ -112,7 +123,7 @@ async function runCase(testCase) {
         // Checked first where it decides whether the frames mean anything, and after
         // capturing otherwise, so the first capture still follows a fresh load.
         if (testCase.mayNotSeek || testCase.mustNotSeek) {
-            const reachable = await canSeekNearEnd(video, { onLongMiss });
+            const reachable = await canSeekNearEnd(video, { onMiss });
             if (!reachable) {
                 result.status = 'flagged';
                 result.error = 'Flagged as not readable to the end';
@@ -126,26 +137,27 @@ async function runCase(testCase) {
         }
 
         const outputWidth = testCase.outputWidth ?? 320;
-        const makeGrabber = () => new FrameGrabber(video, {
+        const frameSize = {
             crop: { x: 0, y: 0, width: video.videoWidth, height: video.videoHeight },
             width: outputWidth,
             height: Math.round(outputWidth * video.videoHeight / video.videoWidth),
-            onLongMiss,
-        });
+        };
+        const makeGrabber = () => new FrameGrabber(video, { ...frameSize, onMiss });
+        const readAgain = () => readBarcode(new FrameReader(frameSize).read(video), testCase.axis);
 
         const wrong = [];
         const grabber = makeGrabber();
         const began = performance.now();
-        let frames = await captureAll(video, testCase, grabber, wrong);
+        let frames = await captureAll(video, testCase, grabber, wrong, readAgain);
         const elapsed = performance.now() - began;
-        if (testCase.rerun) frames += await captureAll(video, testCase, makeGrabber(), wrong);
+        if (testCase.rerun) frames += await captureAll(video, testCase, makeGrabber(), wrong, readAgain);
 
         result.frames = frames;
         result.wrong = wrong.length;
         result.wrongSample = wrong.slice(0, 8);
         result.capturedPerSecond = Number((grabber.stats.frames / (elapsed / 1000)).toFixed(1));
         result.stats = grabber.stats;
-        const flaggedWrongly = !testCase.mayNotSeek && !testCase.mayWarn && !(await canSeekNearEnd(video, { onLongMiss }));
+        const flaggedWrongly = !testCase.mayNotSeek && !testCase.mayWarn && !(await canSeekNearEnd(video, { onMiss }));
         if (flaggedWrongly) result.error = 'Flagged as not readable to the end';
         result.status = wrong.length === 0 && sizeOk && !flaggedWrongly ? 'pass' : 'FAIL';
     } catch (error) {
@@ -154,8 +166,8 @@ async function runCase(testCase) {
         result.error = String(error);
     } finally {
         if (misses.length > 0) {
-            result.longMissCount = misses.length;
-            result.longMisses = misses.slice(0, LONG_MISSES_KEPT);
+            result.missCount = misses.length;
+            result.misses = misses.slice(0, MISSES_KEPT);
         }
         removeVideo(video);
         if (preview) removeVideo(preview);

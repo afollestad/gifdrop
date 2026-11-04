@@ -57,16 +57,16 @@ export class VideoSeeker {
     #recentLatencyMs = 0;
     #shownMediaTime = null;
     #longSeekMisses = 0;
-    #onLongMiss;
+    #onMiss;
 
     presentFallbacks = 0;
 
-    // `onLongMiss` hears what happened when a long seek ended with no new frame, for the
-    // capture suite to report, since that's when a wrong frame can get through.
-    constructor(video, { signal, onLongMiss } = {}) {
+    // `onMiss` hears what happened when a long seek, or the first, ended with no new frame,
+    // for the capture suite to report, since that's when a wrong frame can get through.
+    constructor(video, { signal, onMiss } = {}) {
         this.#video = video;
         this.#signal = signal;
-        this.#onLongMiss = onLongMiss;
+        this.#onMiss = onMiss;
     }
 
     // Resolves with whether a new frame was seen. The first long seek to see none goes
@@ -75,14 +75,15 @@ export class VideoSeeker {
     // which is why it's only the first. Without frame callbacks or while hidden, nothing
     // could tell whether the second try worked.
     async seek(target) {
-        if (!this.#settled) {
+        const first = !this.#settled;
+        if (first) {
             await this.#settleInitialFrame();
             this.#settled = true;
         }
         const video = this.#video;
         const from = video.currentTime;
         const missesBefore = this.#longSeekMisses;
-        const landed = await this.#seekOnce(target);
+        const landed = await this.#seekOnce(target, { first });
         const firstLongMiss = missesBefore === 0 && this.#longSeekMisses === 1;
         if (!firstLongMiss || !video.requestVideoFrameCallback || document.hidden) return landed;
         await this.#seekOnce(retryWaypoint(target, from), { untilSeeked: true });
@@ -111,7 +112,8 @@ export class VideoSeeker {
     }
 
     // `untilSeeked` is for passing through a position, where what's painted doesn't matter.
-    #seekOnce(target, { untilSeeked = false } = {}) {
+    // `first` marks this seeker's first seek, which is reported if it misses, however short.
+    #seekOnce(target, { untilSeeked = false, first = false } = {}) {
         const video = this.#video;
         const signal = this.#signal;
         const before = video.currentTime;
@@ -152,22 +154,27 @@ export class VideoSeeker {
                     resolve(false);
                 } else {
                     this.#recentLatencyMs = nextRecentLatency(this.#recentLatencyMs, latencyMs);
-                    if (isLongSeek(distance) && latencyMs === null) {
-                        this.#onLongMiss?.({
+                    const longMiss = isLongSeek(distance) && latencyMs === null;
+                    if (longMiss || (first && latencyMs === null)) {
+                        this.#onMiss?.({
                             target,
                             before,
+                            first,
+                            // The frame last known to be showing, which for a first seek is any
+                            // that arrived before it.
+                            shownMediaTime: this.#shownMediaTime,
                             waitedMs: performance.now() - began,
                             seekedAfterMs,
                             frameCallbacks,
                             lastMediaTime,
                             sameFrameConfirmed,
-                            earlierMisses: this.#longSeekMisses,
+                            earlierLongMisses: this.#longSeekMisses,
                             currentTime: video.currentTime,
                             readyState: video.readyState,
                             seeking: video.seeking,
                         });
-                        this.#longSeekMisses++;
                     }
+                    if (longMiss) this.#longSeekMisses++;
                     resolve(latencyMs !== null);
                 }
             };
@@ -269,10 +276,10 @@ export class VideoSeeker {
 // frame arrives. A video that barely changes can also fail this, so it's for a
 // warning rather than for refusing the file. Browsers without frame callbacks can't
 // tell, and neither can a hidden tab, so it waits until it's back.
-export async function canSeekNearEnd(video, { signal, onLongMiss } = {}) {
+export async function canSeekNearEnd(video, { signal, onMiss } = {}) {
     if (!video.requestVideoFrameCallback) return true;
     await whenVisible(signal);
-    const seeker = new VideoSeeker(video, { signal, onLongMiss });
+    const seeker = new VideoSeeker(video, { signal, onMiss });
     let landed;
     try {
         landed = await seeker.seek(seekTarget(video.duration * NEAR_END_SHARE, video.duration));
