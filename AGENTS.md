@@ -81,6 +81,7 @@ Each of these was measured, and the code's comments say why. Don't simplify them
 ## Images
 
 - `favicon.ico`, `favicon.png`, `apple-touch-icon.png` and `images/app-icon.png` are as supplied, recolored teal to match the theme sheets. The app icon's 1024x1024 master isn't in the repo. Its plate's edge was already masked clean, so check any replacement for stray alpha specks around the tile.
+- `images/app-icon-light.png` and `-dark.png` are identical: `app-icon.png` cropped 11px per side, where its plate stops short of the edges, then scaled back to 256x256 (`sips --cropToHeightWidth 234 234 images/app-icon.png --out images/app-icon-light.png`, then `sips -z 256 256` on that, copied to `-dark.png`). Only af.codes uses them, loading every app site's pair by URL, so keep the paths and regenerate both whenever the icon changes.
 - `images/og-image.png` comes from `og-image/render.sh`. Re-render it when the icon, the name or the dark theme's colors change.
 - The header's logo is `https://af.codes/images/af.png`, so there's no copy here. It loads with the page, before any video is picked, so the `ui` suite's check for network requests after load still holds. It sits uncropped on a circle filled with `--logo-circle`, white in the light theme and near-black in the dark one, with a drop shadow in `--icon-shadow`. Its values in the theme sheets match af.codes' and hold at least 3:1 with the logo's main blues, `#0057d5` and `#0186fb`, so change them together.
 
