@@ -43,6 +43,9 @@ export const CAPTURE_CASES = [
     { name: 'no duration webm', src: 'barcode-noduration.webm', fps: 15, optionalCodec: true, mayNotSeek: true },
     { name: 'cut off partway', src: 'barcode-cutoff.mp4', fps: 15, mustNotSeek: true },
     { name: 'play refused while loading', src: 'barcode.mp4', fps: 15, start: 1, refusePlay: true },
+    // Accelerated canvases refuse to be read, as in Safari 27.2 on GitHub's macOS 26 runners.
+    { name: 'accelerated reads refused', src: 'barcode.mp4', fps: 15, start: 1, refuseAcceleratedReads: true },
+    { name: 'accelerated reads refused, large downscale', src: 'barcode.mp4', fps: 15, start: 1, outputWidth: 96, refuseAcceleratedReads: true },
 ];
 
 export const REJECTED_FILES = [

@@ -42,6 +42,30 @@ function log(line) {
     document.getElementById('log').textContent += `${line}\n`;
 }
 
+// Throws as Safari 27.2 on GitHub's macOS 26 runners does for any canvas that didn't ask for
+// willReadFrequently, counting each refusal so a case can't pass without meeting one.
+function refuseAcceleratedReads() {
+    const software = new WeakSet();
+    const { getContext } = HTMLCanvasElement.prototype;
+    const { getImageData } = CanvasRenderingContext2D.prototype;
+    const refusals = { count: 0 };
+    HTMLCanvasElement.prototype.getContext = function (type, options) {
+        const context = getContext.call(this, type, options);
+        if (options?.willReadFrequently) software.add(context);
+        return context;
+    };
+    CanvasRenderingContext2D.prototype.getImageData = function (...args) {
+        if (software.has(this)) return getImageData.apply(this, args);
+        refusals.count++;
+        throw new DOMException('The object is in an invalid state.', 'InvalidStateError');
+    };
+    refusals.restore = () => {
+        HTMLCanvasElement.prototype.getContext = getContext;
+        CanvasRenderingContext2D.prototype.getImageData = getImageData;
+    };
+    return refusals;
+}
+
 function makeVideo() {
     const video = document.createElement('video');
     document.getElementById('stage').append(video);
@@ -112,6 +136,7 @@ async function runCase(testCase) {
     const onMiss = missRecorder(misses);
     // Shadows the method on this element, as a browser without it would have.
     if (testCase.noFrameCallback) video.requestVideoFrameCallback = undefined;
+    const refusals = testCase.refuseAcceleratedReads ? refuseAcceleratedReads() : null;
     try {
         if (testCase.refusePlay) await loadWithRefusedPlay(video, url);
         else await loadVideo(video, url);
@@ -159,12 +184,15 @@ async function runCase(testCase) {
         result.stats = grabber.stats;
         const flaggedWrongly = !testCase.mayNotSeek && !testCase.mayWarn && !(await canSeekNearEnd(video, { onMiss }));
         if (flaggedWrongly) result.error = 'Flagged as not readable to the end';
-        result.status = wrong.length === 0 && sizeOk && !flaggedWrongly ? 'pass' : 'FAIL';
+        const unrefused = refusals?.count === 0;
+        if (unrefused) result.error = 'No read was refused';
+        result.status = wrong.length === 0 && sizeOk && !flaggedWrongly && !unrefused ? 'pass' : 'FAIL';
     } catch (error) {
         const unsupported = testCase.optionalCodec && error instanceof VideoLoadError && UNSUPPORTED_REASONS.has(error.reason);
         result.status = unsupported ? 'unsupported' : 'ERROR';
         result.error = String(error);
     } finally {
+        refusals?.restore();
         if (misses.length > 0) {
             result.missCount = misses.length;
             result.misses = misses.slice(0, MISSES_KEPT);
