@@ -1,6 +1,15 @@
-# GifDrop
+<p align="center">
+  <picture>
+    <source srcset="images/app-icon-dark.png" media="(prefers-color-scheme: dark)">
+    <img src="images/app-icon-light.png" alt="" width="96" height="96">
+  </picture>
+</p>
 
-Drop a video, get a GIF, at [gifdrop.af.codes](https://gifdrop.af.codes). Trim, crop, and tune the size, speed and loop, with an estimated file size before you commit. It all runs in your browser, so your video is never uploaded.
+<h1 align="center">GifDrop</h1>
+
+<p align="center">Drop a video, get a GIF, right in your browser at <a href="https://gifdrop.af.codes">gifdrop.af.codes</a>.</p>
+
+Trim, crop, and tune the size, speed and loop, with an estimated file size before you commit. Your video never leaves your device.
 
 It opens whatever your browser can play, which usually means MP4, WebM and MOV.
 
