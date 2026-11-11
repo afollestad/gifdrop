@@ -4,7 +4,7 @@ A video-to-GIF site that does everything in the browser. `main` is the published
 
 ## Keep this file and the README up to date
 
-After changing files, architecture, conventions or behavior, check whether this file or `README.md` needs updating.
+After changing files, architecture, conventions or behavior, check whether this file or `README.md` needs updating. The README is for people: what GifDrop does and how to work on it. Measured behavior, rules for agents and change history don't belong there.
 
 ## Commits
 
