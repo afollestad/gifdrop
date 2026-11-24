@@ -1,6 +1,7 @@
 // Drives the real page in a same-origin frame, the way someone would: picking and
 // dropping files, using the controls and keyboard, and downloading the result. This
 // avoids browser-specific automation, so it runs alike in every browser.
+import { finishReport } from '/tests/e2e/finish.js';
 
 const reportName = new URLSearchParams(location.search).get('report') ?? 'ui';
 const frame = document.getElementById('app');
@@ -36,9 +37,11 @@ function equal(actual, expected, what) {
 }
 
 async function openApp() {
+    // Replacing rather than setting `src` keeps the page's history at one entry, which
+    // WebKit on iOS requires before the page can close its own tab.
     await new Promise((resolve) => {
         frame.onload = resolve;
-        frame.src = '/index.html';
+        frame.contentWindow.location.replace('/index.html');
     });
     const { document: doc } = frame.contentWindow;
     await until(() => doc.body.dataset.view === 'empty', 'the page to start');
@@ -649,5 +652,5 @@ results.push({
     detail: pageErrors.length === 0 ? 'clean' : undefined,
 });
 
-await post(reportName, 'json', JSON.stringify({ userAgent: navigator.userAgent, hidden: document.hidden, results }));
 log('Done.');
+await finishReport(reportName, JSON.stringify({ userAgent: navigator.userAgent, hidden: document.hidden, results }));

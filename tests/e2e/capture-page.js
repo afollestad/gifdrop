@@ -8,6 +8,7 @@ import { canSeekNearEnd } from '/scripts/app/video-seeker.js';
 import { loadVideo, releaseVideo, resumeBlockedLoad, VideoLoadError } from '/scripts/app/video-source.js';
 import { readAlphaBarcode, readBarcode } from '/tests/barcode.js';
 import { CAPTURE_CASES, REJECTED_FILES } from '/tests/e2e/capture-cases.js';
+import { finishReport } from '/tests/e2e/finish.js';
 
 const reportName = new URLSearchParams(location.search).get('report') ?? 'capture';
 const UNSUPPORTED_REASONS = new Set(['undecodable', 'timeout']);
@@ -259,5 +260,5 @@ if (!results.some((result) => alphaCases.has(result.name) && result.status === '
     results.push({ name: 'alpha kept by some format', status: 'FAIL', error: 'No alpha video kept its transparency' });
 }
 
-await post(reportName, { userAgent: navigator.userAgent, hidden: document.hidden, results });
 log('Done.');
+await finishReport(reportName, JSON.stringify({ userAgent: navigator.userAgent, hidden: document.hidden, results }, null, 2));

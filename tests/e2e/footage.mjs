@@ -35,14 +35,19 @@ function print(report) {
 const name = `footage-${spec.split('=')[0]}`;
 const server = await startServer(0, { footagePath: resolve(path) });
 const closeBrowser = openBrowser(spec, `http://localhost:${server.port}/tests/e2e/footage.html?report=${name}`);
+// Tells the page whether to close its tab, so one with errors stays open.
+let passed = false;
 try {
-    print(JSON.parse(await server.waitForReport(name, REPORT_TIMEOUT_MS)));
+    const report = JSON.parse(await server.waitForReport(name, REPORT_TIMEOUT_MS));
+    print(report);
+    passed = !report.error && report.results.every((result) => !result.error);
 } catch (error) {
     console.error(error.message);
     const progressPath = join(OUT, `${name}-progress.json`);
     if (existsSync(progressPath)) print(JSON.parse(readFileSync(progressPath, 'utf8')));
     process.exitCode = 1;
 } finally {
+    await server.answer(name, passed);
     closeBrowser();
     server.close();
 }

@@ -1,5 +1,6 @@
 // A static server for the repo root that also accepts test reports. Reports
-// are saved under tests/e2e/out/ and handed to whoever is waiting for them.
+// are saved under tests/e2e/out/ and handed to whoever is waiting for them. A final
+// report's response waits for `answer`, which tells the page whether to close its tab.
 import { createReadStream } from 'node:fs';
 import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -66,6 +67,15 @@ async function serveFile(request, response, path) {
 export async function startServer(port = 0, { footagePath } = {}) {
     const waiters = new Map();
     const arrived = new Map();
+    const held = new Map();
+
+    function reply(response, verdict) {
+        return new Promise((done) => {
+            response.on('finish', done);
+            response.on('close', done);
+            response.writeHead(200, { 'Content-Type': 'text/plain' }).end(verdict);
+        });
+    }
 
     const server = createServer(async (request, response) => {
         try {
@@ -80,7 +90,8 @@ export async function startServer(port = 0, { footagePath } = {}) {
                 const body = await readBody(request);
                 await mkdir(OUT, { recursive: true });
                 await writeFile(join(OUT, `${name}.${ext}`), body);
-                response.writeHead(204).end();
+                if (url.searchParams.has('final')) held.set(name, response);
+                else response.writeHead(204).end();
                 if (waiters.has(name)) {
                     waiters.get(name)(body);
                     waiters.delete(name);
@@ -113,6 +124,14 @@ export async function startServer(port = 0, { footagePath } = {}) {
         close: () => {
             server.closeAllConnections();
             server.close();
+        },
+        // Resolves once the page has the verdict, or at once if no page is waiting. A
+        // response whose page has gone would never finish, so it's skipped.
+        answer(name, passed) {
+            const response = held.get(name);
+            held.delete(name);
+            if (!response || response.destroyed) return Promise.resolve();
+            return reply(response, passed ? 'close' : 'keep');
         },
         waitForReport(name, timeoutMs) {
             if (arrived.has(name)) return Promise.resolve(arrived.get(name));

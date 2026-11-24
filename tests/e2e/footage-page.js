@@ -7,6 +7,7 @@ import { SIZE_LIMITS } from '/scripts/app/limits.js';
 import { outputSize, planFrames } from '/scripts/app/plan.js';
 import { canSeekNearEnd } from '/scripts/app/video-seeker.js';
 import { isHdr, loadVideo, releaseVideo } from '/scripts/app/video-source.js';
+import { finishReport } from '/tests/e2e/finish.js';
 
 const reportName = new URLSearchParams(location.search).get('report') ?? 'footage';
 
@@ -86,5 +87,5 @@ try {
 } catch (error) {
     report.error = String(error);
 }
-await post(reportName, 'json', JSON.stringify(report));
 log('Done.');
+await finishReport(reportName, JSON.stringify(report));

@@ -52,10 +52,13 @@ async function runSuite(spec, suiteName) {
     console.log(`\n${suiteName} in ${browserName}`);
     const server = await startServer();
     const closeBrowser = openBrowser(spec, `http://localhost:${server.port}/tests/e2e/${suite.page}?report=${name}`);
+    // Tells the page whether to close its tab, so a failing one stays open.
+    let passed = false;
     try {
         const report = suite.check(JSON.parse(await server.waitForReport(name, REPORT_TIMEOUT_MS)), name);
         printResults(report);
-        return report.results.every((result) => PASSING.has(result.status));
+        passed = report.results.every((result) => PASSING.has(result.status));
+        return passed;
     } catch (error) {
         console.error(error.message);
         const progressPath = join(OUT, `${name}-progress.json`);
@@ -66,6 +69,7 @@ async function runSuite(spec, suiteName) {
         }
         return false;
     } finally {
+        await server.answer(name, passed);
         closeBrowser();
         server.close();
     }

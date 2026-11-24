@@ -8,6 +8,7 @@ import { planFrames, outputSize } from '/scripts/app/plan.js';
 import { SIZE_LIMITS } from '/scripts/app/limits.js';
 import { loadVideo, releaseVideo, VideoLoadError } from '/scripts/app/video-source.js';
 import { CONVERT_CASES } from '/tests/e2e/convert-cases.js';
+import { finishReport } from '/tests/e2e/finish.js';
 
 const reportName = new URLSearchParams(location.search).get('report') ?? 'convert';
 const UNSUPPORTED_REASONS = new Set(['undecodable', 'timeout']);
@@ -171,5 +172,5 @@ for (const [index, testCase] of CONVERT_CASES.entries()) {
 results.push(await checkCancelling());
 results.push(await checkAlreadyCancelled());
 
-await post(reportName, 'json', JSON.stringify({ userAgent: navigator.userAgent, hidden: document.hidden, results }));
 log('Done.');
+await finishReport(reportName, JSON.stringify({ userAgent: navigator.userAgent, hidden: document.hidden, results }));
