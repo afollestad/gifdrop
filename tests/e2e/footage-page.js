@@ -5,16 +5,19 @@ import { fullCrop } from '/scripts/app/crop-math.js';
 import { estimate } from '/scripts/app/estimator.js';
 import { SIZE_LIMITS } from '/scripts/app/limits.js';
 import { outputSize, planFrames } from '/scripts/app/plan.js';
+import { initialSettings } from '/scripts/app/settings.js';
 import { canSeekNearEnd } from '/scripts/app/video-seeker.js';
 import { isHdr, loadVideo, releaseVideo } from '/scripts/app/video-source.js';
 import { finishReport } from '/tests/e2e/finish.js';
 
 const reportName = new URLSearchParams(location.search).get('report') ?? 'footage';
 
+// A `width` of null takes the app's default for the video.
 const SETTINGS = [
-    { name: 'default', width: 480, seconds: 5, quality: 'balanced' },
+    { name: 'default', width: null, seconds: 5, quality: 'balanced' },
     { name: 'small', width: 480, seconds: 5, quality: 'small' },
     { name: 'high', width: 480, seconds: 5, quality: 'high' },
+    { name: 'wide high', width: 800, seconds: 5, quality: 'high' },
     { name: 'narrow', width: 270, seconds: 5, quality: 'balanced' },
     { name: 'boomerang', width: 270, seconds: 3, quality: 'balanced', loop: 'boomerang' },
     { name: '2x speed', width: 270, seconds: 8, quality: 'balanced', speed: 2 },
@@ -56,12 +59,13 @@ try {
     log(JSON.stringify(report));
 
     const crop = fullCrop(video.videoWidth, video.videoHeight);
+    const defaultWidth = initialSettings(video).width;
     for (const [index, setting] of SETTINGS.entries()) {
         const { name, width, quality, loop = 'forever', speed = 1, fps = 15 } = setting;
         const trimStart = (setting.start ?? 0) * video.duration;
         const trimEnd = Math.min(video.duration, trimStart + setting.seconds);
         const plan = planFrames({ trimStart, trimEnd, fps, speed });
-        const size = outputSize(crop, width, SIZE_LIMITS);
+        const size = outputSize(crop, width ?? defaultWidth, SIZE_LIMITS);
         const result = { name, index, size, loop, planned: plan.times.length };
         log(`Running ${name}...`);
         try {
