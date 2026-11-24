@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { formatByteRange, formatBytes, formatTime, gifFileName, parseTime, spokenTime } from '../../scripts/app/format.js';
+import { formatByteRange, formatBytes, formatTime, gifFileName, parseTime, previewCssWidth, spokenTime } from '../../scripts/app/format.js';
 
 test('formatTime shows minutes and tenths', () => {
     assert.equal(formatTime(0), '0:00.0');
@@ -61,4 +61,13 @@ test('gifFileName swaps only the last extension', () => {
     assert.equal(gifFileName('clip.final.mp4'), 'clip.final.gif');
     assert.equal(gifFileName('noextension'), 'noextension.gif');
     assert.equal(gifFileName('.mov'), 'video.gif');
+});
+
+test('previewCssWidth shows a GIF at screen pixels when it stays wide enough', () => {
+    assert.equal(previewCssWidth(800, 2), 400);
+    assert.equal(previewCssWidth(960, 1.5), 640);
+    assert.equal(previewCssWidth(640, 2), 320);
+    assert.equal(previewCssWidth(480, 2), null);
+    assert.equal(previewCssWidth(800, 1), null);
+    assert.equal(previewCssWidth(800, undefined), null);
 });

@@ -1,12 +1,16 @@
 // Shows the finished GIF, and owns its object URL. A GIF can't be paused, so pausing
 // swaps it for a still of its first frame, and playing restarts it from a fresh URL.
-// With reduced motion it starts paused.
-import { formatBytes, formatTime, gifFileName } from '../app/format.js';
+// With reduced motion it starts paused. On a high-density screen it's shown one pixel
+// to one screen pixel when that leaves it wide enough, following the window between
+// screens.
+import { formatBytes, formatTime, gifFileName, previewCssWidth } from '../app/format.js';
 
 export function createResult({ els, prefersReducedMotion }) {
     let blob = null;
     let url = null;
     let playing = false;
+    let shownSize = null;
+    let resolution = null;
 
     function revoke() {
         if (url) URL.revokeObjectURL(url);
@@ -24,6 +28,24 @@ export function createResult({ els, prefersReducedMotion }) {
         els.poster.width = width;
         els.poster.height = height;
         els.poster.getContext('2d').drawImage(bitmapSource, 0, 0, width, height);
+    }
+
+    function unwatchResolution() {
+        resolution?.removeEventListener('change', fitToScreen);
+        resolution = null;
+    }
+
+    // A media query only says when the density stops matching, so each change watches
+    // for the next.
+    function fitToScreen() {
+        unwatchResolution();
+        const { width, height } = shownSize;
+        const cssWidth = previewCssWidth(width, window.devicePixelRatio);
+        els.figure.classList.toggle('at-screen-pixels', cssWidth !== null);
+        els.figure.style.setProperty('--preview-width', cssWidth === null ? '' : `${cssWidth}px`);
+        els.figure.style.setProperty('--preview-ratio', String(width / height));
+        resolution = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+        resolution.addEventListener('change', fitToScreen);
     }
 
     function play() {
@@ -60,6 +82,8 @@ export function createResult({ els, prefersReducedMotion }) {
             els.length.textContent = formatTime(seconds);
             els.image.width = output.width;
             els.image.height = output.height;
+            shownSize = { width: output.width, height: output.height };
+            fitToScreen();
             els.figure.classList.toggle('has-transparency', output.transparent);
 
             const stillUrl = URL.createObjectURL(blob);
@@ -79,6 +103,7 @@ export function createResult({ els, prefersReducedMotion }) {
         },
 
         clear() {
+            unwatchResolution();
             revoke();
             blob = null;
             playing = false;

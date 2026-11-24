@@ -2,6 +2,7 @@
 
 const SECONDS_PER_MINUTE = 60;
 const BYTES_PER_UNIT = 1024;
+const MIN_PREVIEW_WIDTH = 320;
 
 function tenths(seconds) {
     return Math.round(seconds * 10);
@@ -57,4 +58,13 @@ export function formatByteRange(low, high) {
 export function gifFileName(sourceName) {
     const stem = sourceName.replace(/\.[^./\\]+$/, '') || 'video';
     return `${stem}.gif`;
+}
+
+// The width in CSS pixels that shows a GIF one pixel to one screen pixel, so a
+// high-density screen doesn't stretch it soft, or null to leave it at its own size when
+// that would make it smaller than MIN_PREVIEW_WIDTH.
+export function previewCssWidth(width, devicePixelRatio) {
+    if (!(devicePixelRatio > 1)) return null;
+    const cssWidth = width / devicePixelRatio;
+    return cssWidth >= MIN_PREVIEW_WIDTH ? cssWidth : null;
 }

@@ -1123,6 +1123,18 @@ progress::-moz-progress-bar {
     box-shadow: 0 .75rem 2rem -1rem var(--glass-shadow);
 }
 
+/* With a width set, max-height would squash the picture rather than shrink it, so the
+   height limit becomes a width limit, on the figure so the button stays on the picture.
+   result.js sets both properties. */
+.result-figure.at-screen-pixels {
+    max-width: min(100%, 70vh * var(--preview-ratio));
+}
+
+.result-figure.at-screen-pixels img,
+.result-figure.at-screen-pixels canvas {
+    width: var(--preview-width);
+}
+
 .result-toggle {
     position: absolute;
     right: .75rem;
