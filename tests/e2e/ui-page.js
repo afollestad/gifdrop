@@ -36,6 +36,14 @@ function equal(actual, expected, what) {
     assert(actual === expected, `${what}: got ${actual}, expected ${expected}`);
 }
 
+// The page's warnings during the current test, such as a failed estimate's error, which
+// it handles rather than throwing. A failing test reports them.
+let pageWarnings = [];
+
+function describe(value) {
+    return value?.message === undefined ? String(value) : `${value.name}: ${value.message}`;
+}
+
 async function openApp() {
     // Replacing rather than setting `src` keeps the page's history at one entry, which
     // WebKit on iOS requires before the page can close its own tab.
@@ -43,6 +51,12 @@ async function openApp() {
         frame.onload = resolve;
         frame.contentWindow.location.replace('/index.html');
     });
+    const { console: pageConsole } = frame.contentWindow;
+    const warn = pageConsole.warn;
+    pageConsole.warn = (...args) => {
+        pageWarnings.push(args.map(describe).join(' '));
+        warn.apply(pageConsole, args);
+    };
     const { document: doc } = frame.contentWindow;
     await until(() => doc.body.dataset.view === 'empty', 'the page to start');
     return { win: frame.contentWindow, doc, byId: (id) => doc.getElementById(id) };
@@ -87,8 +101,14 @@ function waitForEditing({ doc }) {
     return until(() => doc.body.dataset.screen === 'editing', 'the editor');
 }
 
-function waitForEstimate({ byId }) {
-    return until(() => /^About/.test(byId('estimate-value').textContent), 'an estimate');
+// Says what showed instead: blank for an estimate that failed or was ruled out, and
+// "Estimating size…" for one still running.
+async function waitForEstimate({ byId }) {
+    try {
+        await until(() => /^About/.test(byId('estimate-value').textContent), 'an estimate');
+    } catch (error) {
+        throw new Error(`${error.message}, showing "${byId('estimate-value').textContent.trim()}"`);
+    }
 }
 
 function setRange({ win }, input, value) {
@@ -633,6 +653,7 @@ for (const [name, run] of Object.entries(TESTS)) {
     log(`Running ${name}...`);
     const result = { name };
     const began = performance.now();
+    pageWarnings = [];
     try {
         const app = await openApp();
         app.win.addEventListener('error', (event) => pageErrors.push(`${name}: ${event.message}`));
@@ -643,6 +664,7 @@ for (const [name, run] of Object.entries(TESTS)) {
     } catch (error) {
         result.status = 'FAIL';
         result.error = error.message;
+        if (pageWarnings.length > 0) result.error += ` | warned: ${pageWarnings.slice(0, 3).join(' | ')}`;
     }
     results.push(result);
     log(`  ${result.status} ${result.error ?? ''}`);
