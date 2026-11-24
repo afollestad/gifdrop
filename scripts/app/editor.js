@@ -147,6 +147,7 @@ export function createEditor({ els, dispatch, status, prefersReducedMotion }) {
                 return estimate({ video: owner.capture, plan, crop: cropRect, size, quality, loop, signal: job.signal });
             });
             if (job.signal.aborted || owner !== session) return;
+            if (range.transparent) showTransparency(owner);
             lastEstimate = range;
             status.say(controls.showEstimate(range));
             render();
@@ -209,6 +210,12 @@ export function createEditor({ els, dispatch, status, prefersReducedMotion }) {
         els.stageFrame.style.setProperty('--video-aspect', video.videoWidth / video.videoHeight);
     }
 
+    // The checkerboard behind the preview only ever goes on, from whichever finds
+    // transparency first: the first frame, an estimate's samples, or a conversion.
+    function showTransparency(owner) {
+        if (owner === session) owner.preview.classList.add('has-transparency');
+    }
+
     function failLoad(error) {
         closeSession();
         dispatch('loadFailed', { message: loadErrorMessage(error.reason) });
@@ -230,6 +237,10 @@ export function createEditor({ els, dispatch, status, prefersReducedMotion }) {
         els.unblockPanel.hidden = true;
         dispatch('loaded');
         refresh();
+
+        owner.firstFrameHasTransparency().then((transparent) => {
+            if (transparent) showTransparency(owner);
+        }, () => {});
 
         // Doesn't hold anything up, and only ever adds a warning.
         owner.canSeekNearEnd().then((reachable) => {
@@ -304,6 +315,7 @@ export function createEditor({ els, dispatch, status, prefersReducedMotion }) {
                 });
             });
             if (!isCurrent()) return;
+            if (output.transparent) showTransparency(owner);
             await result.show(output, { sourceName: owner.file.name, seconds: playbackSeconds(plan, loop) });
             if (!isCurrent()) return;
             conversion = null;

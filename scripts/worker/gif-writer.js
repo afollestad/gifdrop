@@ -1,6 +1,10 @@
 // Writes frames to GIF bytes with gifenc, which only handles the format here: the
 // palette and pixel decisions are made before it. Output is flushed frame by frame
 // into separate chunks, since a single growing buffer would keep being copied.
+//
+// A frame's disposal says what happens before the next one, so each frame is held
+// until the next is known. gifenc writes every frame over the whole canvas, so
+// clearing one clears everything.
 import { GIFEncoder } from '../../vendor/gifenc/gifenc.esm.js';
 import { TRANSPARENT_INDEX } from './palette.js';
 
@@ -9,6 +13,8 @@ const MIN_COLOR_DEPTH = 2;
 // Leaves the previous frame in place under this one, where gifenc's default for a
 // frame with transparency would clear it.
 const DISPOSE_KEEP = 1;
+// Clears the canvas, for a next frame that turns pixels showing a color transparent.
+const DISPOSE_CLEAR = 2;
 // gifenc's repeat values: 0 loops forever, and -1 leaves out the loop block.
 const REPEAT_FOREVER = 0;
 const REPEAT_ONCE = -1;
@@ -33,12 +39,18 @@ export class GifWriter {
     #framesWritten = 0;
     #bytesWritten = 0;
 
-    // The newest frame waits here in case the next is identical and just extends it.
+    // The newest frame waits here in case the next is identical and just extends it,
+    // and until the next says how to dispose of it. Its slot in `frameSizes` is null
+    // for a return-trip frame.
     #pending;
     #pendingDelay = 0;
     #hasPending = false;
-    #pendingSlot = 0;
+    #pendingSlot = null;
     #frameSizes = [];
+
+    // Whether the first frame has transparent pixels, and whether any frame clears.
+    #firstTransparent = false;
+    #cleared = false;
 
     // For a boomerang's return trip, the full picture and delay of each frame.
     #pictures = [];
@@ -72,20 +84,25 @@ export class GifWriter {
         return this.#frameSizes;
     }
 
+    // Whether the GIF shows any transparency: from its first frame, or from a frame
+    // that clears, since transparency can't appear any other way.
+    get transparent() {
+        return this.#firstTransparent || this.#cleared;
+    }
+
     // Takes the remapper's output, which it copies, since the remapper reuses both
-    // buffers. `changed` is how many pixels differ from the frame before.
-    addFrame(indices, composite, delay, changed) {
+    // buffers. `changed` is how many pixels differ from the frame before, and `clears`
+    // whether the canvas needs clearing first, when `indices` is the whole picture.
+    addFrame(indices, composite, delay, changed, clears = false) {
         if (this.#hasPending && changed === 0) {
             this.#pendingDelay += delay;
             if (this.#boomerang) this.#pictureDelays[this.#pictureDelays.length - 1] += delay;
             this.#frameSizes.push(0);
             return;
         }
-        this.#flushPending();
-        this.#pending.set(indices);
-        this.#pendingDelay = delay;
-        this.#hasPending = true;
-        this.#pendingSlot = this.#frameSizes.length;
+        if (this.#frameSizes.length === 0) this.#firstTransparent = indices.includes(TRANSPARENT_INDEX);
+        this.#flushPending(clears);
+        this.#hold(indices, delay, this.#frameSizes.length);
         this.#frameSizes.push(0);
         if (this.#boomerang) {
             this.#pictures.push(composite.slice());
@@ -95,46 +112,66 @@ export class GifWriter {
 
     // Returns the whole GIF, as chunks in order.
     finish() {
-        this.#flushPending();
         if (this.#boomerang) this.#writeReturnTrip();
+        // Looping goes back to the first frame, which covers the canvas unless it has
+        // transparency of its own.
+        this.#flushPending(this.#repeat !== REPEAT_ONCE && this.#firstTransparent);
         this.#encoder.finish();
         this.#takeChunk();
         return this.#chunks;
     }
 
-    #flushPending() {
+    #hold(indices, delay, slot) {
+        if (indices !== this.#pending) this.#pending.set(indices);
+        this.#pendingDelay = delay;
+        this.#pendingSlot = slot;
+        this.#hasPending = true;
+    }
+
+    // Writes the held frame, cleared after if `nextClears`.
+    #flushPending(nextClears) {
         if (!this.#hasPending) return;
+        if (nextClears) this.#cleared = true;
         const before = this.#bytesWritten;
-        this.#write(this.#pending, this.#pendingDelay);
-        this.#frameSizes[this.#pendingSlot] = this.#bytesWritten - before;
+        this.#write(this.#pending, this.#pendingDelay, nextClears ? DISPOSE_CLEAR : DISPOSE_KEEP);
+        if (this.#pendingSlot !== null) this.#frameSizes[this.#pendingSlot] = this.#bytesWritten - before;
         this.#hasPending = false;
     }
 
     // Plays the frames between the two ends backward. Each shows exactly what it did
-    // on the way out, so these compare pictures with no tolerance.
+    // on the way out, so these compare pictures with no tolerance. A frame where a
+    // color turns transparent is written whole, after a clear.
     #writeReturnTrip() {
         const pictures = this.#pictures;
         for (let i = pictures.length - 2; i >= 1; i--) {
             const picture = pictures[i];
             const shown = pictures[i + 1];
+            let clears = false;
+            for (let p = 0; p < picture.length; p++) {
+                if (picture[p] === TRANSPARENT_INDEX && shown[p] !== TRANSPARENT_INDEX) {
+                    clears = true;
+                    break;
+                }
+            }
+            this.#flushPending(clears);
             const indices = this.#pending;
             for (let p = 0; p < picture.length; p++) {
-                indices[p] = picture[p] === shown[p] ? TRANSPARENT_INDEX : picture[p];
+                indices[p] = !clears && picture[p] === shown[p] ? TRANSPARENT_INDEX : picture[p];
             }
-            this.#write(indices, this.#pictureDelays[i]);
+            this.#hold(indices, this.#pictureDelays[i], null);
         }
     }
 
-    #write(indices, delay) {
+    #write(indices, delay, dispose) {
         const first = this.#framesWritten === 0;
         this.#encoder.writeFrame(indices, this.#width, this.#height, {
             first,
             palette: first ? this.#palette : null,
             repeat: this.#repeat,
             colorDepth: this.#colorDepth,
-            transparent: !first,
+            transparent: !first || this.#firstTransparent,
             transparentIndex: TRANSPARENT_INDEX,
-            dispose: DISPOSE_KEEP,
+            dispose,
             // gifenc takes milliseconds and rounds to the hundredths the format holds.
             delay: Math.min(delay, MAX_DELAY) * 10,
         });

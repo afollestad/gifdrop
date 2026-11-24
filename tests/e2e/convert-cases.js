@@ -1,7 +1,9 @@
 // What tests/e2e/convert.html runs, each through the real converter and worker. By
 // default a case converts all of barcode.mp4 to 320 wide at 15 FPS, and
 // convert-check.mjs reads back every frame's barcode. `optionalCodec` is as in
-// capture-cases.js, and `noBarcode` is for footage without one.
+// capture-cases.js, and `noBarcode` is for footage without one. `alpha` checks the
+// transparency of barcode-alpha's frames too, and as in capture-cases.js, a browser
+// may not decode a format's alpha, but a run fails if no format keeps it.
 
 export const CONVERT_CASES = [
     { name: 'plain loop' },
@@ -19,6 +21,11 @@ export const CONVERT_CASES = [
     { name: 'long GOP from 10s', src: 'barcode-longgop.mp4', trimStart: 10, trimEnd: 12 },
     { name: 'vp9', src: 'barcode.webm', optionalCodec: true },
     { name: 'hevc', src: 'barcode-hevc.mp4', optionalCodec: true },
+    { name: 'vp9 alpha', src: 'barcode-alpha.webm', alpha: true, optionalCodec: true, estimate: true },
+    { name: 'hevc alpha', src: 'barcode-alpha.mov', alpha: true, optionalCodec: true, estimate: true },
+    { name: 'vp9 alpha boomerang of a trim', src: 'barcode-alpha.webm', alpha: true, optionalCodec: true, loop: 'boomerang', trimStart: 1, trimEnd: 2.5 },
+    { name: 'hevc alpha boomerang of a trim', src: 'barcode-alpha.mov', alpha: true, optionalCodec: true, loop: 'boomerang', trimStart: 1, trimEnd: 2.5 },
+    { name: 'hevc alpha played once', src: 'barcode-alpha.mov', alpha: true, optionalCodec: true, loop: 'once', trimEnd: 2 },
     { name: 'one unchanging picture', src: 'still.mp4', noBarcode: true, expectFrames: 1 },
     { name: 'realistic footage', src: 'motion.mp4', noBarcode: true, estimate: true },
     { name: 'realistic boomerang', src: 'motion.mp4', noBarcode: true, estimate: true, loop: 'boomerang', trimEnd: 4 },

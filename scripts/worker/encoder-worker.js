@@ -20,15 +20,15 @@ const HANDLERS = {
         return { type: 'ack' };
     },
     buildPalette() {
-        return { type: 'ack', colors: job.buildPalette() };
+        return { type: 'ack', ...job.buildPalette() };
     },
     frame({ pixels, delay }) {
         job.addFrame(new Uint8ClampedArray(pixels), delay);
         return { type: 'ack', bytes: job.bytesWritten };
     },
     finish() {
-        const { chunks, frameSizes, frames, bytes } = job.finish();
-        return { type: 'ack', blob: new Blob(chunks, { type: 'image/gif' }), frameSizes, frames, bytes };
+        const { chunks, frameSizes, frames, bytes, transparent } = job.finish();
+        return { type: 'ack', blob: new Blob(chunks, { type: 'image/gif' }), frameSizes, frames, bytes, transparent };
     },
 };
 

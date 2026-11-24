@@ -47,9 +47,10 @@ scripts/app/converter.js     Video and settings to GIF
 scripts/app/estimator.js     Encoding a sample with the real pipeline
 scripts/ui/                  One module per control, taking elements and callbacks
 scripts/worker/encoder-*.js  The worker's message loop, and EncoderJob with no worker dependency
+scripts/worker/alpha.js      Pure: which pixels count as transparent, shared with the page
 scripts/worker/palette.js    Global palette: histogram, variance-minimising split, k-means
-scripts/worker/remap.js      Ordered dither and transparency
-scripts/worker/gif-writer.js Writes through gifenc, merging repeats, and the boomerang's return
+scripts/worker/remap.js      Ordered dither, skipped pixels and transparency
+scripts/worker/gif-writer.js Writes through gifenc, merging repeats, disposal, and the boomerang's return
 vendor/gifenc/               gifenc 1.0.3, unmodified
 ```
 
@@ -63,7 +64,9 @@ Each of these was measured, and the code's comments say why. Don't simplify them
 - **iOS:** frame data is held back until a video has played, so `video-source.js` plays and pauses it. The first seek after that never paints, and repeating the position or seeking to 0 doesn't help, so a seek near the start is spent first. Low Power Mode refuses the play, which needs a tap.
 - **Silent freezes:** a file cut off partway, or WebM with no seek index in Firefox, reports success and its full length as seekable while repeating an earlier frame. Only `canSeekNearEnd` notices. Playing it through first doesn't help Firefox.
 - **`willReadFrequently`** stays off unless a read is refused, as every read from an accelerated canvas is in Safari 27.2 on GitHub's macOS 26 runners. It sounds right, but made reads of HDR video about 40 times slower in Chrome.
-- **gifenc** needs `dispose: 1` on every frame, since transparency defaults to clearing the canvas, and a palette only on the first frame, since later ones would each write a local table.
+- **gifenc** needs an explicit `dispose` on every frame, since transparency defaults to clearing the canvas, and a palette only on the first frame, since later ones would each write a local table.
+- **Transparency:** index 0 means "unchanged" in a later frame, so a pixel showing a color can only turn transparent by clearing the canvas. The frame before gets `dispose: 2`, and the clearing frame is written whole. gifenc writes every frame over the whole canvas, so this clears everything. `GifWriter` holds each frame until the next is known, so it knows which disposal to use. Looping back to a first frame with transparency also clears. Opaque videos take none of this: an opaque first frame and `dispose: 1` throughout, byte for byte as before transparency was added.
+- **Alpha reads:** frames are read with `alpha: true` only when the palette samples had transparency, so opaque videos keep the measured opaque canvas. An alpha canvas must be cleared before each draw, or a frame's transparent areas show the frame before. The preview `<video>` has an opaque background, or the capture video shows through its transparent areas. Safari and iOS decode VP9's color but not its alpha, so that comes out opaque.
 - **Tests use object URLs**, as the app does, since browsers can load those differently from a server's.
 - **Each session gets new `<video>` elements.** An earlier session's unfinished seek would otherwise land on the next video while it loads, which hung it on iOS.
 - **Drops:** `dragenter` must be cancelled as well as `dragover`. WebKit goes by the last one it fired, and showing the overlay changes the target, so otherwise a quick drop navigates to the file. Synthetic events can't show this, since they skip the browser's decision.
@@ -72,7 +75,8 @@ Each of these was measured, and the code's comments say why. Don't simplify them
 ## Testing
 
 - `npm test` runs the unit tests with Node's runner.
-- `npm run fixtures` generates videos into `tests/fixtures/`, which is ignored, using `ffmpeg`.
+- `npm run fixtures` generates videos into `tests/fixtures/`, which is ignored, using `ffmpeg`. On a Mac, it also runs `tests/make-apple-fixtures.sh`, which makes `barcode-alpha.mov`, HEVC with alpha, with `avconvert` from a ProRes 4444 source. CI makes fixtures on Linux, so its macOS jobs run that script themselves.
+- The alpha fixtures repeat the frame number in alpha alone. A browser that decodes a format's color but not its alpha reports that case as unsupported, but a run fails if no format kept alpha.
 - `npm run test:e2e -- <browser> [suite]` runs the `capture`, `convert` and `ui` suites in `chrome`, `firefox`, `safari` or `ios` (or `ios=<udid>`). Set `CHROME_PATH` or `FIREFOX_PATH` for a specific binary. Barcode fixtures encode each frame's number, so a wrong frame fails by name. Safari's tab must stay visible, since capture pauses while hidden.
 - `.github/workflows/ci.yml` runs all of it. macOS minutes cost 10x on a private repo.
 - `tests/e2e/screenshots.mjs` captures every screen at each width and theme, using generated footage.
@@ -89,6 +93,8 @@ Each of these was measured, and the code's comments say why. Don't simplify them
 
 - Files the browser can't decode fail with an error, by design.
 - One palette covers the whole GIF, a compromise on clips with very different scenes. Per-scene palettes would be the upgrade.
+- GIF transparency is all or nothing, so soft edges are cut at half opacity and come out jagged.
+- A GIF only gets transparency if the palette samples have some, so a video whose transparency appears only between samples comes out opaque, with black there.
 - About one in ten iOS Simulator runs on CI, a long first seek got no new-frame callback within its limit and captured an earlier frame, with no warning. The cause is unknown, and it hasn't been seen on a real iPhone, though one wrong frame is easy to miss. `VideoSeeker` seeks away and back after the first such miss, which is what recovers from the iOS first-seek behavior above, but this is too rare to show that it's fixed. If the capture suite fails this way again, its `misses` report whether `seeked` arrived, whether callbacks came with old times or not at all, and whether the page was still rendering.
 - Once on CI, the iOS Simulator's first capture of `noisy 15fps`, a short seek back from the warm-up position, never painted, and frame 1 was captured for frame 0. In the one local repro, the warm-up seek was slow, the video moved past it and presented a frame afterward, and then the capture seek was the one that never painted. Seeking during playback and then pausing didn't recreate it, and playing until a frame is presented before pausing couldn't be shown to fix it, so the cause is unknown. `misses` include a first seek with no new frame however short, with `shownMediaTime` for a frame presented before it, and the first wrong frame is read again a second later as `later`, to tell a late paint from none.
 - Safari can decode the same frame slightly differently from one pass to the next, though always the right frame. The cause is unknown, and the only effect seen is an estimate differing by under 2%.

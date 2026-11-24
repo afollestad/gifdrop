@@ -14,12 +14,12 @@ function makeFrame(paint) {
     const rgba = new Uint8ClampedArray(WIDTH * HEIGHT * 4);
     for (let y = 0; y < HEIGHT; y++) {
         for (let x = 0; x < WIDTH; x++) {
-            const [r, g, b] = paint(x, y);
+            const [r, g, b, a = 255] = paint(x, y);
             const i = 4 * (y * WIDTH + x);
             rgba[i] = r;
             rgba[i + 1] = g;
             rgba[i + 2] = b;
-            rgba[i + 3] = 255;
+            rgba[i + 3] = a;
         }
     }
     return rgba;
@@ -32,17 +32,20 @@ function movingSquare(step) {
     return makeFrame((x, y) => (x >= step * 4 && x < step * 4 + 12 && y >= 10 && y < 22 ? [255, 255, 255] : gradient(x, y)));
 }
 
+// Like EncoderJob, reading alpha only when the samples had transparency.
 function encode(frames, { loop = 'forever', colors = 255, tolerance = 5, delay = 7 } = {}) {
     const histogram = new ColorHistogram();
     for (const frame of frames) histogram.addFrame(frame, WIDTH, HEIGHT, 1);
     const { palette, rmsError } = buildPalette(histogram, colors);
-    const remapper = new FrameRemapper({ width: WIDTH, height: HEIGHT, palette, rmsError, ditherScale: 2, tolerance });
+    const remapper = new FrameRemapper({ width: WIDTH, height: HEIGHT, palette, rmsError, ditherScale: 2, tolerance, alpha: histogram.transparent });
     const writer = new GifWriter({ width: WIDTH, height: HEIGHT, palette, loop });
     const pictures = [];
+    const clears = [];
     for (const frame of frames) {
         const changed = remapper.remap(frame);
-        writer.addFrame(remapper.indices, remapper.composite, delay, changed);
+        writer.addFrame(remapper.indices, remapper.composite, delay, changed, remapper.clears);
         pictures.push(remapper.composite.slice());
+        clears.push(remapper.clears);
     }
     const chunks = writer.finish();
     const bytes = new Uint8Array(chunks.reduce((total, chunk) => total + chunk.length, 0));
@@ -52,7 +55,7 @@ function encode(frames, { loop = 'forever', colors = 255, tolerance = 5, delay =
         at += chunk.length;
     }
     assert.equal(writer.bytesWritten, bytes.length);
-    return { gif: parseGif(bytes), palette, rmsError, pictures, writer };
+    return { gif: parseGif(bytes), palette, rmsError, pictures, clears, writer };
 }
 
 test('buildPalette reserves its first entry and stays within the limit', () => {
@@ -261,4 +264,105 @@ test('small palettes still produce a valid GIF', () => {
     const { gif, pictures } = encode([makeFrame(() => [50, 60, 70]), makeFrame((x) => (x < 32 ? [50, 60, 70] : [200, 10, 10]))]);
     assert.ok(gif.frames[0].minCodeSize >= 2);
     assert.deepEqual(compositeFrames(gif)[1], pictures[1]);
+});
+
+// A white square over a transparent background, at `left`, `width` wide. What's
+// under the transparency is a color that mustn't show.
+function squareOnClear(left, width = 12) {
+    return makeFrame((x, y) => (x >= left && x < left + width && y >= 10 && y < 22 ? [255, 255, 255] : [250, 0, 0, 0]));
+}
+
+test('transparent pixels are not counted as colors', () => {
+    const histogram = new ColorHistogram();
+    histogram.addFrame(squareOnClear(0), WIDTH, HEIGHT, 1);
+    assert.equal(histogram.transparent, true);
+    const { palette } = buildPalette(histogram, 255);
+    assert.deepEqual(palette.slice(1), [[255, 255, 255]]);
+});
+
+test('an opaque histogram has no transparency', () => {
+    const histogram = new ColorHistogram();
+    histogram.addFrame(movingSquare(0), WIDTH, HEIGHT, 1);
+    assert.equal(histogram.transparent, false);
+});
+
+test('a first frame with transparency writes it', () => {
+    const { gif, writer } = encode([squareOnClear(0)]);
+    assert.equal(gif.frames[0].transparentIndex, TRANSPARENT_INDEX);
+    const transparent = gif.frames[0].indices.filter((index) => index === TRANSPARENT_INDEX).length;
+    assert.equal(transparent, WIDTH * HEIGHT - 12 * 12);
+    assert.equal(writer.transparent, true);
+});
+
+test('an opaque GIF reports no transparency', () => {
+    assert.equal(encode([movingSquare(0), movingSquare(1)]).writer.transparent, false);
+});
+
+test('a color turning transparent clears the frame before, and is written whole', () => {
+    const frames = [0, 4, 8].map((left) => squareOnClear(left));
+    const { gif, pictures, clears } = encode(frames, { loop: 'once' });
+    assert.deepEqual(clears, [false, true, true]);
+    assert.deepEqual(gif.frames.map((frame) => frame.disposal), [2, 2, 1]);
+    const written = gif.frames[1].indices.filter((index) => index !== TRANSPARENT_INDEX).length;
+    assert.equal(written, 12 * 12);
+    compositeFrames(gif).forEach((picture, i) => assert.deepEqual(picture, pictures[i], `frame ${i}`));
+});
+
+test('transparency only being covered needs no clear', () => {
+    const frames = [12, 16, 20].map((width) => squareOnClear(0, width));
+    const { gif, pictures, clears } = encode(frames, { loop: 'once' });
+    assert.deepEqual(clears, [false, false, false]);
+    assert.deepEqual(gif.frames.map((frame) => frame.disposal), [1, 1, 1]);
+    const written = gif.frames[1].indices.filter((index) => index !== TRANSPARENT_INDEX).length;
+    assert.equal(written, 4 * 12);
+    compositeFrames(gif).forEach((picture, i) => assert.deepEqual(picture, pictures[i], `frame ${i}`));
+});
+
+test('unchanged colors are written as they were after a clear', () => {
+    // The left square stays put, within the tolerance, while the right one leaves.
+    const frame = (level, right) => makeFrame((x, y) => {
+        if (y < 10 || y >= 22) return [0, 0, 0, 0];
+        if (x < 12) return [100 + level, 120, 140];
+        if (right && x >= 40 && x < 52) return [255, 255, 255];
+        return [0, 0, 0, 0];
+    });
+    const { gif, pictures, clears } = encode([frame(0, true), frame(1, false)], { loop: 'once', tolerance: 5 });
+    assert.deepEqual(clears, [false, true]);
+    assert.deepEqual(pictures[1].subarray(10 * WIDTH, 10 * WIDTH + 12), pictures[0].subarray(10 * WIDTH, 10 * WIDTH + 12));
+    compositeFrames(gif).forEach((picture, i) => assert.deepEqual(picture, pictures[i], `frame ${i}`));
+});
+
+test('looping back to a first frame with transparency clears the last', () => {
+    const frames = [0, 4].map((left) => squareOnClear(left, 20));
+    assert.equal(encode(frames, { loop: 'forever' }).gif.frames.at(-1).disposal, 2);
+    assert.equal(encode(frames, { loop: 'once' }).gif.frames.at(-1).disposal, 1);
+});
+
+test('looping back to an opaque first frame needs no clear', () => {
+    // Transparency that only appears later is covered again by the first frame.
+    const later = makeFrame((x, y) => (x < 8 ? [0, 0, 0, 0] : gradient(x, y)));
+    const { gif, writer } = encode([movingSquare(0), later], { loop: 'forever' });
+    assert.equal(gif.frames[0].transparentIndex, null);
+    assert.deepEqual(gif.frames.map((frame) => frame.disposal), [2, 1]);
+    assert.equal(writer.transparent, true);
+});
+
+test('a boomerang with transparency returns through the same pictures', () => {
+    const frames = [0, 4, 8, 12].map((left) => squareOnClear(left));
+    const { gif, pictures } = encode(frames, { loop: 'boomerang' });
+    assert.equal(gif.frames.length, 6);
+    // Each move uncovers pixels both ways, so every frame clears before the next,
+    // and the last before the loop.
+    assert.ok(gif.frames.every((frame) => frame.disposal === 2));
+    const decoded = compositeFrames(gif);
+    [0, 1, 2, 3, 2, 1].forEach((source, i) => assert.deepEqual(decoded[i], pictures[source], `position ${i}`));
+});
+
+test('a boomerang return trip that only uncovers transparency needs no clear', () => {
+    // Growing on the way out means shrinking, and clearing, on the way back.
+    const frames = [12, 16, 20, 24].map((width) => squareOnClear(0, width));
+    const { gif, pictures } = encode(frames, { loop: 'boomerang' });
+    assert.deepEqual(gif.frames.map((frame) => frame.disposal), [1, 1, 1, 2, 2, 2]);
+    const decoded = compositeFrames(gif);
+    [0, 1, 2, 3, 2, 1].forEach((source, i) => assert.deepEqual(decoded[i], pictures[source], `position ${i}`));
 });

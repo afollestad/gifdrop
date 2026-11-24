@@ -3,12 +3,17 @@
 // converting and estimating never disturb the preview, and its work runs one job at a
 // time. Each session's elements are new, so anything still finishing from an earlier
 // session can only touch elements that are already gone.
+import { hasTransparency } from '../worker/alpha.js';
+import { fullCrop } from './crop-math.js';
+import { FrameGrabber } from './frame-grabber.js';
 import { canSeekNearEnd } from './video-seeker.js';
 import { isHdr, loadVideo, releaseVideo, resumeBlockedLoad } from './video-source.js';
 
-function makeVideo(label) {
+const PROBE_WIDTH = 160;
+
+function makeVideo(className, label) {
     const video = document.createElement('video');
-    video.className = 'stage-video';
+    video.className = className;
     if (label) {
         video.setAttribute('aria-label', label);
     } else {
@@ -27,8 +32,8 @@ export class VideoSession {
 
     constructor({ stage, file }) {
         this.file = file;
-        this.capture = makeVideo();
-        this.preview = makeVideo('Video preview');
+        this.capture = makeVideo('stage-video');
+        this.preview = makeVideo('stage-video stage-preview', 'Video preview');
         stage.prepend(this.capture, this.preview);
         this.#url = URL.createObjectURL(file);
         this.preview.addEventListener('seeked', () => this.#seekNext());
@@ -58,6 +63,19 @@ export class VideoSession {
 
     canSeekNearEnd() {
         return this.runCapture(() => canSeekNearEnd(this.capture, { signal: this.#closing.signal }));
+    }
+
+    // Whether the first frame has any transparency, captured small, as frames are, since
+    // a video that hasn't painted yet reads as transparent.
+    firstFrameHasTransparency() {
+        return this.runCapture(async () => {
+            const { videoWidth, videoHeight } = this.capture;
+            const width = Math.min(videoWidth, PROBE_WIDTH);
+            const height = Math.max(1, Math.round(width * videoHeight / videoWidth));
+            const crop = fullCrop(videoWidth, videoHeight);
+            const grabber = new FrameGrabber(this.capture, { crop, width, height, alpha: true, signal: this.#closing.signal });
+            return hasTransparency((await grabber.grab(0)).data);
+        });
     }
 
     // Shows a moment in the preview. While a seek is underway only the latest request

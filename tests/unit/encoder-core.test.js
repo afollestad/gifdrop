@@ -64,7 +64,7 @@ test('frameSizes counts a repeated frame as free', () => {
 test('a sample can be smaller than the output', () => {
     const job = new EncoderJob(CONFIG);
     job.addSample(new Uint8ClampedArray(4 * 4).fill(200), 2, 2);
-    assert.ok(job.buildPalette() >= 1);
+    assert.ok(job.buildPalette().colors >= 1);
 });
 
 test('the size limit also covers the last frame and a return trip', () => {
@@ -88,4 +88,22 @@ test('going over the size limit stops the job', () => {
     job.buildPalette();
     job.addFrame(frame(0), 5);
     assert.throws(() => job.addFrame(frame(200), 5), OutputTooLargeError);
+});
+
+test('EncoderJob reports transparency from its samples and in the GIF', () => {
+    const clear = (rgba) => {
+        for (let i = 3; i < rgba.length; i += 8) rgba[i] = 0;
+        return rgba;
+    };
+    const job = new EncoderJob(CONFIG);
+    job.addSample(clear(frame(40)), WIDTH, HEIGHT);
+    assert.equal(job.buildPalette().transparent, true);
+    job.addFrame(clear(frame(40)), 5);
+    assert.equal(job.finish().transparent, true);
+
+    const opaque = new EncoderJob(CONFIG);
+    opaque.addSample(frame(40), WIDTH, HEIGHT);
+    assert.equal(opaque.buildPalette().transparent, false);
+    opaque.addFrame(frame(40), 5);
+    assert.equal(opaque.finish().transparent, false);
 });

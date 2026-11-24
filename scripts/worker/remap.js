@@ -5,6 +5,12 @@
 //
 // A pixel is compared with the source value of what's showing there now, not with
 // the previous frame, so tiny changes can't add up unnoticed over many frames.
+//
+// With `alpha`, pixels under the cutoff are transparent, which `composite` holds as
+// TRANSPARENT_INDEX. A frame can leave them as they are, or draw over them, but a
+// pixel showing a color can only become transparent by clearing the whole canvas, so
+// a frame that needs that writes every pixel.
+import { ALPHA_CUTOFF } from './alpha.js';
 import { srgbToOklab } from './oklab.js';
 import { TRANSPARENT_INDEX } from './palette.js';
 
@@ -72,6 +78,7 @@ export class FrameRemapper {
     #lookup = new Int16Array(LOOKUP_SIZE).fill(UNSET);
     #thresholds;
     #toleranceSquared;
+    #alpha;
     #started = false;
     #shownR;
     #shownG;
@@ -82,11 +89,16 @@ export class FrameRemapper {
     // skipped, and the full picture showing after it. Both are reused.
     indices;
     composite;
+    // Whether the latest frame needs the canvas cleared first, in which case `indices`
+    // is the whole picture, with TRANSPARENT_INDEX where it's transparent.
+    clears = false;
 
-    constructor({ width, height, palette, rmsError, ditherScale, tolerance }) {
+    // Without `alpha`, every pixel is taken as opaque.
+    constructor({ width, height, palette, rmsError, ditherScale, tolerance, alpha = false }) {
         const pixels = width * height;
         this.#width = width;
         this.#height = height;
+        this.#alpha = alpha;
         this.#colors = palette.length;
         this.#thresholds = makeThresholds(ditherAmplitude(rmsError, ditherScale));
         this.#toleranceSquared = tolerance * tolerance * WEIGHT_TOTAL;
@@ -110,8 +122,17 @@ export class FrameRemapper {
         return index;
     }
 
-    // Fills `indices` and `composite`, and returns how many pixels changed. The
-    // first frame always writes every pixel.
+    // Whether a pixel showing a color is transparent in `rgba`.
+    #needsClear(rgba) {
+        const { composite } = this;
+        for (let p = 0, i = 3; p < composite.length; p++, i += 4) {
+            if (rgba[i] < ALPHA_CUTOFF && composite[p] !== TRANSPARENT_INDEX) return true;
+        }
+        return false;
+    }
+
+    // Fills `indices` and `composite`, sets `clears`, and returns how many pixels
+    // changed. The first frame always writes every pixel.
     remap(rgba) {
         const width = this.#width;
         const height = this.#height;
@@ -122,22 +143,37 @@ export class FrameRemapper {
         const shownG = this.#shownG;
         const shownB = this.#shownB;
         const { indices, composite } = this;
+        const alpha = this.#alpha;
         const first = !this.#started;
+        const clears = alpha && !first && this.#needsClear(rgba);
         let changed = 0;
 
         for (let y = 0, i = 0, p = 0; y < height; y++) {
             const row = (y & (BAYER_SIZE - 1)) * BAYER_SIZE;
             for (let x = 0; x < width; x++, i += 4, p++) {
+                // Transparent stays transparent, and is cleared otherwise, so either way
+                // it's left out of the frame.
+                if (alpha && rgba[i + 3] < ALPHA_CUTOFF) {
+                    indices[p] = TRANSPARENT_INDEX;
+                    if (composite[p] !== TRANSPARENT_INDEX) {
+                        composite[p] = TRANSPARENT_INDEX;
+                        changed++;
+                    }
+                    continue;
+                }
+
                 const r = rgba[i];
                 const g = rgba[i + 1];
                 const b = rgba[i + 2];
 
-                if (!first) {
+                // Only a pixel showing a color has a source value to compare with. After a
+                // clear, it's written again as it was.
+                if (!first && composite[p] !== TRANSPARENT_INDEX) {
                     const dr = r - shownR[p];
                     const dg = g - shownG[p];
                     const db = b - shownB[p];
                     if (WEIGHT_R * dr * dr + WEIGHT_G * dg * dg + WEIGHT_B * db * db < toleranceSquared) {
-                        indices[p] = TRANSPARENT_INDEX;
+                        indices[p] = clears ? composite[p] : TRANSPARENT_INDEX;
                         continue;
                     }
                 }
@@ -153,7 +189,7 @@ export class FrameRemapper {
                 if (index === UNSET) index = this.#fillLookup(key);
 
                 if (!first && index === composite[p]) {
-                    indices[p] = TRANSPARENT_INDEX;
+                    indices[p] = clears ? index : TRANSPARENT_INDEX;
                     continue;
                 }
                 indices[p] = index;
@@ -165,6 +201,7 @@ export class FrameRemapper {
             }
         }
         this.#started = true;
+        this.clears = clears;
         return changed;
     }
 }

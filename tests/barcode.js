@@ -22,3 +22,21 @@ export function readBarcode({ data, width, height }, axis = 'width') {
     }
     return value;
 }
+
+// barcode-alpha.webm and .mov repeat the frame number in alpha alone below
+// y 270 of 360, and are transparent above y 90. Returns the number read from the
+// alpha, and whether the top is transparent.
+export function readAlphaBarcode({ data, width, height }) {
+    let value = 0;
+    const y = Math.floor(height * 7 / 8);
+    for (let bit = 0; bit < CELLS; bit++) {
+        const x = Math.floor((bit + 0.5) * width / CELLS);
+        if (data[4 * (y * width + x) + 3] >= WHITE_THRESHOLD) value |= 1 << bit;
+    }
+    const top = Math.floor(height / 8);
+    let clearTop = true;
+    for (let x = 0; x < width; x++) {
+        if (data[4 * (top * width + x) + 3] >= WHITE_THRESHOLD) clearTop = false;
+    }
+    return { value, clearTop };
+}

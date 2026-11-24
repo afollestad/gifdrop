@@ -58,6 +58,14 @@ encode -f lavfi -i "testsrc2=s=640x360:r=30:d=8,noise=alls=4:allf=t" -f lavfi -i
 # Busy, slightly noisy footage, as a realistic test of estimated and actual sizes.
 encode -f lavfi -i "testsrc2=s=640x360:r=30:d=8,noise=alls=4:allf=t" "${X264[@]}" -g 30 motion.mp4
 
+# The barcode with transparency: clear above y 90, opaque through the barcode's middle
+# row, and below y 270 the frame number again, in alpha alone. So areas keep turning
+# transparent and back, and a wrong frame there fails by name too. The ProRes 4444 is
+# only a source for make-apple-fixtures.sh.
+ALPHA_BARCODE="$(barcode 640x360 40 4),format=yuva444p,geq=lum='lum(X\,Y)':cb=128:cr=128:a='if(lt(Y\,90)\,0\,if(lt(Y\,270)\,255\,255*mod(floor(N/pow(2\,floor(X/40)))\,2)))'"
+encode -f lavfi -i "$ALPHA_BARCODE" -c:v libvpx-vp9 -crf 12 -b:v 0 -deadline realtime -cpu-used 8 -pix_fmt yuva420p barcode-alpha.webm
+encode -f lavfi -i "$ALPHA_BARCODE" -c:v prores_ks -profile:v 4444 -pix_fmt yuva444p10le -alpha_bits 8 barcode-alpha-prores.mov
+
 # One unchanging picture.
 encode -f lavfi -i "color=0x336699:s=320x180:r=30:d=2" "${X264[@]}" still.mp4
 
@@ -69,5 +77,7 @@ head -c 4096 barcode.mp4 > truncated.mp4
 encode -f lavfi -i "$(barcode 640x360 40 4)" "${X264[@]}" -g 30 -movflags +faststart barcode-whole.mp4
 head -c "$(( $(wc -c < barcode-whole.mp4) / 2 ))" barcode-whole.mp4 > barcode-cutoff.mp4
 rm barcode-whole.mp4
+
+if command -v avconvert > /dev/null; then ../make-apple-fixtures.sh; fi
 
 echo "Fixtures written to $(pwd)"

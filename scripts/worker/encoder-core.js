@@ -27,26 +27,30 @@ export class EncoderJob {
         this.#histogram.addFrame(rgba, width, height, 1);
     }
 
-    // Call once, after the last sample and before the first frame.
+    // Call once, after the last sample and before the first frame. Returns how many
+    // `colors` the palette has, and whether the samples had `transparent` pixels.
+    // Without any, frames are taken as opaque.
     buildPalette() {
         const { width, height, colors, tolerance, ditherScale, loop, maxBytes } = this.#config;
         const { palette, rmsError } = buildPalette(this.#histogram, colors);
+        const { transparent } = this.#histogram;
         this.#histogram = null;
-        this.#remapper = new FrameRemapper({ width, height, palette, rmsError, ditherScale, tolerance });
+        this.#remapper = new FrameRemapper({ width, height, palette, rmsError, ditherScale, tolerance, alpha: transparent });
         this.#writer = new GifWriter({ width, height, palette, loop, maxBytes });
-        return palette.length - 1;
+        return { colors: palette.length - 1, transparent };
     }
 
     addFrame(rgba, delay) {
         const remapper = this.#remapper;
         const changed = remapper.remap(rgba);
-        this.#writer.addFrame(remapper.indices, remapper.composite, delay, changed);
+        this.#writer.addFrame(remapper.indices, remapper.composite, delay, changed, remapper.clears);
     }
 
-    // Returns the GIF as `chunks`, and GifWriter's `frameSizes`.
+    // Returns the GIF as `chunks`, GifWriter's `frameSizes`, and whether it shows any
+    // transparency.
     finish() {
         const writer = this.#writer;
         const chunks = writer.finish();
-        return { chunks, frameSizes: writer.frameSizes, frames: writer.framesWritten, bytes: writer.bytesWritten };
+        return { chunks, frameSizes: writer.frameSizes, frames: writer.framesWritten, bytes: writer.bytesWritten, transparent: writer.transparent };
     }
 }

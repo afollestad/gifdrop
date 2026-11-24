@@ -188,14 +188,17 @@ export function parseGif(bytes) {
     return { width, height, palette: globalPalette, loop, frames };
 }
 
-// The picture after each frame, assuming each one keeps what's under it, which the
-// writer's tests assert. Returns one index buffer per frame.
+// The picture after each frame, as index buffers with 0 where nothing shows, which is
+// the writer's transparent index. A frame disposed of with 2 is cleared before the
+// next, and any other keeps what's under the next, which the writer's tests assert.
 export function compositeFrames({ width, height, frames }) {
     const shown = new Uint8Array(width * height);
-    return frames.map(({ indices, transparentIndex }) => {
+    return frames.map(({ indices, transparentIndex, disposal }) => {
         for (let p = 0; p < indices.length; p++) {
             if (indices[p] !== transparentIndex) shown[p] = indices[p];
         }
-        return shown.slice();
+        const picture = shown.slice();
+        if (disposal === 2) shown.fill(0);
+        return picture;
     });
 }

@@ -60,6 +60,7 @@ export function createResult({ els, prefersReducedMotion }) {
             els.length.textContent = formatTime(seconds);
             els.image.width = output.width;
             els.image.height = output.height;
+            els.figure.classList.toggle('has-transparency', output.transparent);
 
             const stillUrl = URL.createObjectURL(blob);
             const still = new Image();

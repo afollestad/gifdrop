@@ -512,6 +512,18 @@ body[data-view="converting"] .crop-box {
     height: 100%;
 }
 
+/* Opaque, so the capture video can't show through a transparent one. */
+.stage-preview {
+    background: #000;
+}
+
+/* Behind a video or GIF with transparency, to show where it is. */
+.stage-preview.has-transparency,
+.result-figure.has-transparency img,
+.result-figure.has-transparency canvas {
+    background: repeating-conic-gradient(var(--checker-a) 0 25%, var(--checker-b) 0 50%) 0 0 / 1rem 1rem;
+}
+
 .stage-loading {
     position: absolute;
     inset: 0;

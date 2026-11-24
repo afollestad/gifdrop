@@ -2,13 +2,14 @@
 // and checks them against what the settings call for.
 import { spawnSync } from 'node:child_process';
 import { outputFrameCount, planFrames } from '../../scripts/app/plan.js';
-import { readBarcode } from '../barcode.js';
+import { readAlphaBarcode, readBarcode } from '../barcode.js';
 import { compositeFrames, parseGif } from '../gif-parse.js';
 
 const EXACT_TOLERANCE_LOW = 0.98;
 const EXACT_TOLERANCE_HIGH = 1.02;
 const FFMPEG_AVAILABLE = spawnSync('ffmpeg', ['-version'], { stdio: 'ignore' }).status === 0;
 
+// Index 0 is where nothing shows, as compositeFrames gives it.
 function toRgba(picture, palette) {
     const data = new Uint8ClampedArray(picture.length * 4);
     for (let p = 0; p < picture.length; p++) {
@@ -16,7 +17,7 @@ function toRgba(picture, palette) {
         data[p * 4] = r;
         data[p * 4 + 1] = g;
         data[p * 4 + 2] = b;
-        data[p * 4 + 3] = 255;
+        data[p * 4 + 3] = picture[p] === 0 ? 0 : 255;
     }
     return data;
 }
@@ -35,6 +36,8 @@ function expectedSequence({ trimStart, trimEnd, fps, speed, loop }) {
     return [...forward, ...forward.slice(1, -1).reverse()];
 }
 
+// Only a GIF with transparency clears frames, and its first frame has some, since
+// barcode-alpha's top is always transparent. Looping back to that needs a clear.
 function checkStructure(gif, result, problems) {
     if (gif.width !== result.size.width || gif.height !== result.size.height) {
         problems.push(`${gif.width}x${gif.height}, expected ${result.size.width}x${result.size.height}`);
@@ -42,11 +45,17 @@ function checkStructure(gif, result, problems) {
     const expectedLoop = result.settings.loop === 'once' ? null : 0;
     if (gif.loop !== expectedLoop) problems.push(`loop block ${gif.loop}, expected ${expectedLoop}`);
 
+    const { transparent } = result;
+    const last = gif.frames.length - 1;
     gif.frames.forEach((frame, i) => {
-        if (frame.disposal !== 1) problems.push(`frame ${i} disposal ${frame.disposal}`);
+        const loopsBack = i === last && transparent && result.settings.loop !== 'once';
+        if (loopsBack ? frame.disposal !== 2 : frame.disposal !== 1 && !(transparent && frame.disposal === 2)) {
+            problems.push(`frame ${i} disposal ${frame.disposal}`);
+        }
         if (frame.localPalette) problems.push(`frame ${i} has a local palette`);
         if (frame.delay < 2) problems.push(`frame ${i} delay ${frame.delay}`);
-        if (i === 0 && frame.transparentIndex !== null) problems.push('first frame has transparency');
+        const firstIndex = transparent ? 0 : null;
+        if (i === 0 && frame.transparentIndex !== firstIndex) problems.push(`first frame transparency ${frame.transparentIndex}`);
         if (i > 0 && frame.transparentIndex !== 0) problems.push(`frame ${i} transparency ${frame.transparentIndex}`);
     });
 }
@@ -61,6 +70,11 @@ function checkBarcodes(gif, result, problems) {
         const image = { data: toRgba(picture, gif.palette), width: gif.width, height: gif.height };
         const got = readBarcode(image, result.axis);
         if (got !== expected[i].frame) problems.push(`position ${i} shows frame ${got}, expected ${expected[i].frame}`);
+        if (result.transparent) {
+            const alpha = readAlphaBarcode(image);
+            if (alpha.value !== expected[i].frame) problems.push(`position ${i} alpha shows frame ${alpha.value}, expected ${expected[i].frame}`);
+            if (!alpha.clearTop) problems.push(`position ${i} top isn't transparent`);
+        }
         if (gif.frames[i].delay !== expected[i].delay) problems.push(`position ${i} delay ${gif.frames[i].delay}, expected ${expected[i].delay}`);
     });
 }
@@ -93,6 +107,7 @@ function describeSuccess(result, gif) {
 
 function checkResult(result, readGif) {
     if (result.status !== 'pass' || result.skipCheck) return result;
+    if (result.transparent && !result.alpha) return { ...result, status: 'FAIL', detail: 'An opaque video came out with transparency' };
 
     const bytes = readGif(result.index);
     const gif = parseGif(new Uint8Array(bytes));
@@ -117,11 +132,19 @@ function checkResult(result, readGif) {
     const ffmpegProblem = checkWithFfmpeg(bytes);
     if (ffmpegProblem) problems.push(ffmpegProblem);
 
+    // A browser that decodes a format's color but not its alpha still makes the opaque GIF.
+    if (problems.length === 0 && result.alpha && !result.transparent) {
+        return { ...result, status: 'unsupported', detail: `Alpha not decoded, otherwise ${describeSuccess(result, gif)}` };
+    }
     if (problems.length === 0) return { ...result, detail: describeSuccess(result, gif) };
     const shown = problems.slice(0, 5).join('; ');
     return { ...result, status: 'FAIL', detail: problems.length > 5 ? `${shown}; and ${problems.length - 5} more` : shown };
 }
 
 export function checkConvertReport(report, readGif) {
-    return { ...report, results: report.results.map((result) => checkResult(result, readGif)) };
+    const results = report.results.map((result) => checkResult(result, readGif));
+    if (!results.some((result) => result.alpha && result.status === 'pass')) {
+        results.push({ name: 'alpha kept by some format', status: 'FAIL', detail: 'No alpha video kept its transparency' });
+    }
+    return { ...report, results };
 }

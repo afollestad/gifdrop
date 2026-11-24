@@ -3,6 +3,7 @@
 // count so small details aren't drowned out. The color space is split repeatedly
 // in Oklab at the cut leaving the least error, then refined with k-means. A median
 // split collapsed on clips with very different scenes; this cut doesn't.
+import { ALPHA_CUTOFF } from './alpha.js';
 import { srgbToOklab } from './oklab.js';
 
 const CHANNEL_BITS = 6;
@@ -19,12 +20,18 @@ export class ColorHistogram {
     sumR = new Float64Array(BINS);
     sumG = new Float64Array(BINS);
     sumB = new Float64Array(BINS);
+    // Whether any pixel read was transparent, which isn't counted as a color.
+    transparent = false;
 
     // Reads every `step`th pixel of each `step`th row.
     addFrame(rgba, width, height, step = 2) {
         const { counts, sumR, sumG, sumB } = this;
         for (let y = 0; y < height; y += step) {
             for (let x = 0, i = y * width * 4; x < width; x += step, i += step * 4) {
+                if (rgba[i + 3] < ALPHA_CUTOFF) {
+                    this.transparent = true;
+                    continue;
+                }
                 const r = rgba[i];
                 const g = rgba[i + 1];
                 const b = rgba[i + 2];

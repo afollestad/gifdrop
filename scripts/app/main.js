@@ -43,6 +43,7 @@ const els = {
         estimateDetail: byId('estimate-detail'),
     },
     result: {
+        figure: byId('result-figure'),
         image: byId('result-image'),
         poster: byId('result-poster'),
         toggle: byId('result-toggle'),

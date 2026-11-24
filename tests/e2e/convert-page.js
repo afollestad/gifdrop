@@ -56,7 +56,7 @@ function settingsFor(testCase, video) {
 }
 
 async function runCase(testCase, index) {
-    const result = { name: testCase.name, index, noBarcode: Boolean(testCase.noBarcode), axis: testCase.axis, expectFrames: testCase.expectFrames, expectExact: testCase.expectExact };
+    const result = { name: testCase.name, index, noBarcode: Boolean(testCase.noBarcode), axis: testCase.axis, alpha: Boolean(testCase.alpha), expectFrames: testCase.expectFrames, expectExact: testCase.expectExact };
     const { video, url, close } = await openFixture(testCase.src ?? 'barcode.mp4');
     try {
         await loadVideo(video, url);
@@ -81,6 +81,7 @@ async function runCase(testCase, index) {
         result.blobBytes = output.blob.size;
         result.blobType = output.blob.type;
         result.frames = output.frames;
+        result.transparent = output.transparent;
         result.progress = lastProgress;
         result.stats = output.stats;
         await post(`${reportName}-${index}`, 'gif', output.blob);

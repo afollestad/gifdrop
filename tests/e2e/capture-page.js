@@ -6,7 +6,7 @@ import { FrameGrabber } from '/scripts/app/frame-grabber.js';
 import { FrameReader } from '/scripts/app/frame-reader.js';
 import { canSeekNearEnd } from '/scripts/app/video-seeker.js';
 import { loadVideo, releaseVideo, resumeBlockedLoad, VideoLoadError } from '/scripts/app/video-source.js';
-import { readBarcode } from '/tests/barcode.js';
+import { readAlphaBarcode, readBarcode } from '/tests/barcode.js';
 import { CAPTURE_CASES, REJECTED_FILES } from '/tests/e2e/capture-cases.js';
 
 const reportName = new URLSearchParams(location.search).get('report') ?? 'capture';
@@ -88,8 +88,14 @@ async function startPreview(preview, url) {
     }
 }
 
+// barcode-alpha's frames as they look when a browser decodes its color but not its alpha.
+function isOpaqueAlphaFrame(alpha) {
+    return alpha.value === 0xffff && !alpha.clearTop;
+}
+
 // The first wrong frame is read again a moment later, to tell a frame that painted late from
-// one that never did.
+// one that never did. Returns how many frames it captured, and how many of those were right
+// but for coming out opaque.
 async function captureAll(video, testCase, grabber, wrong, readAgain) {
     const speed = testCase.speed ?? 1;
     const start = testCase.start ?? 0;
@@ -97,13 +103,19 @@ async function captureAll(video, testCase, grabber, wrong, readAgain) {
     const step = speed / testCase.fps;
     const duration = (testCase.end ?? Math.floor(video.duration)) - start;
     const count = Math.max(1, Math.round(duration / step));
+    let opaque = 0;
     for (let i = 0; i < count; i++) {
         const t = start + i * step;
         const image = await grabber.grab(t);
         const got = readBarcode(image, testCase.axis);
         const expected = frameAt(t + 0.001);
-        if (got !== expected) {
-            const frame = { i, t: Number(t.toFixed(4)), expected, got };
+        const alpha = testCase.alpha ? readAlphaBarcode(image) : null;
+        if (alpha && got === expected && isOpaqueAlphaFrame(alpha)) {
+            opaque++;
+            continue;
+        }
+        if (got !== expected || (alpha && (alpha.value !== expected || !alpha.clearTop))) {
+            const frame = { i, t: Number(t.toFixed(4)), expected, got, ...(alpha && { alpha }) };
             if (wrong.length === 0) {
                 await new Promise((resolve) => setTimeout(resolve, READ_AGAIN_AFTER_MS));
                 frame.later = readAgain();
@@ -111,7 +123,7 @@ async function captureAll(video, testCase, grabber, wrong, readAgain) {
             wrong.push(frame);
         }
     }
-    return count;
+    return { count, opaque };
 }
 
 // iOS can't get frames without playing, so it fails as blocked and takes the tap's
@@ -166,6 +178,7 @@ async function runCase(testCase) {
             crop: { x: 0, y: 0, width: video.videoWidth, height: video.videoHeight },
             width: outputWidth,
             height: Math.round(outputWidth * video.videoHeight / video.videoWidth),
+            alpha: testCase.alpha,
         };
         const makeGrabber = () => new FrameGrabber(video, { ...frameSize, onMiss });
         const readAgain = () => readBarcode(new FrameReader(frameSize).read(video), testCase.axis);
@@ -173,9 +186,15 @@ async function runCase(testCase) {
         const wrong = [];
         const grabber = makeGrabber();
         const began = performance.now();
-        let frames = await captureAll(video, testCase, grabber, wrong, readAgain);
+        const captured = await captureAll(video, testCase, grabber, wrong, readAgain);
         const elapsed = performance.now() - began;
-        if (testCase.rerun) frames += await captureAll(video, testCase, makeGrabber(), wrong, readAgain);
+        let frames = captured.count;
+        if (testCase.rerun) frames += (await captureAll(video, testCase, makeGrabber(), wrong, readAgain)).count;
+
+        // Some opaque frames among transparent ones are wrong, where all of them is a format
+        // whose alpha this browser doesn't decode.
+        const alphaDropped = captured.opaque > 0 && captured.opaque === frames;
+        if (captured.opaque > 0 && !alphaDropped) wrong.push({ opaqueFrames: captured.opaque });
 
         result.frames = frames;
         result.wrong = wrong.length;
@@ -186,7 +205,9 @@ async function runCase(testCase) {
         if (flaggedWrongly) result.error = 'Flagged as not readable to the end';
         const unrefused = refusals?.count === 0;
         if (unrefused) result.error = 'No read was refused';
-        result.status = wrong.length === 0 && sizeOk && !flaggedWrongly && !unrefused ? 'pass' : 'FAIL';
+        if (alphaDropped) result.error ??= 'Every frame came out opaque';
+        const ok = wrong.length === 0 && sizeOk && !flaggedWrongly && !unrefused;
+        result.status = ok && alphaDropped ? 'unsupported' : ok ? 'pass' : 'FAIL';
     } catch (error) {
         const unsupported = testCase.optionalCodec && error instanceof VideoLoadError && UNSUPPORTED_REASONS.has(error.reason);
         result.status = unsupported ? 'unsupported' : 'ERROR';
@@ -232,6 +253,11 @@ for (const testCase of CAPTURE_CASES) {
     await post(`${reportName}-progress`, { userAgent: navigator.userAgent, hidden: document.hidden, results });
 }
 for (const file of REJECTED_FILES) results.push(await checkRejected(file));
+
+const alphaCases = new Set(CAPTURE_CASES.filter((testCase) => testCase.alpha).map((testCase) => testCase.name));
+if (!results.some((result) => alphaCases.has(result.name) && result.status === 'pass')) {
+    results.push({ name: 'alpha kept by some format', status: 'FAIL', error: 'No alpha video kept its transparency' });
+}
 
 await post(reportName, { userAgent: navigator.userAgent, hidden: document.hidden, results });
 log('Done.');

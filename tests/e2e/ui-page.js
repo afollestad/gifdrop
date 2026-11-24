@@ -421,6 +421,36 @@ const TESTS = {
         assert(/KB/.test(app.byId('result-size').textContent), 'shows the size');
         equal(app.byId('result-frames').textContent, '60', 'shows the frames');
         equal(app.byId('result-dimensions').textContent, '480 × 270', 'shows the dimensions');
+        assert(!app.byId('result-figure').classList.contains('has-transparency'), 'no checkerboard behind an opaque GIF');
+        assert(!app.doc.querySelector('.stage-preview').classList.contains('has-transparency'), 'no checkerboard behind an opaque video');
+    },
+
+    // A browser may decode VP9 but not its alpha, as Safari does, so it tries HEVC too,
+    // on a fresh page. The first frame is checked before the estimate captures anything,
+    // so the checkerboard comes first.
+    async 'a video with transparency shows a checkerboard behind it and its GIF'(first) {
+        const tries = [['barcode-alpha.webm', 'video/webm'], ['barcode-alpha.mov', 'video/quicktime']];
+        let app = first;
+        let preview = null;
+        for (const [i, [name, type]] of tries.entries()) {
+            if (i > 0) app = await openApp();
+            pick(app, await fixture(name, type));
+            await waitForEditing(app);
+            const shown = app.doc.querySelector('.stage-preview');
+            const estimated = () => /^About/.test(app.byId('estimate-value').textContent);
+            await until(() => shown.classList.contains('has-transparency') || estimated(), 'a checkerboard or an estimate');
+            if (shown.classList.contains('has-transparency')) {
+                assert(!estimated(), 'the first frame shows the checkerboard before the estimate');
+                preview = shown;
+                break;
+            }
+        }
+        assert(preview, 'neither alpha video showed a checkerboard');
+        assert(app.win.getComputedStyle(preview).backgroundImage.includes('gradient'), 'the preview has the pattern');
+        app.byId('convert-button').click();
+        await until(() => app.doc.body.dataset.screen === 'done', 'the result', 60000);
+        assert(app.byId('result-figure').classList.contains('has-transparency'), 'checkerboard behind the GIF');
+        assert(app.win.getComputedStyle(app.byId('result-image')).backgroundImage.includes('gradient'), 'the GIF has the pattern');
     },
 
     async 'the GIF can be paused and replayed'(app) {

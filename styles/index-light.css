@@ -31,6 +31,9 @@
     --track: rgba(7, 42, 47, .16);
     --accent-glow: rgba(0, 107, 122, .25);
     --scrim: rgba(241, 251, 251, .82);
+    /* The checkerboard behind transparency. */
+    --checker-a: #ffffff;
+    --checker-b: #dbe8e9;
 }
 
 html {

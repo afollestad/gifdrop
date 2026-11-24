@@ -87,6 +87,11 @@ jobs:
           name: fixtures
           path: tests/fixtures
 
+      # Fixtures are made on Linux, but HEVC with alpha needs macOS.
+      - name: Make Apple fixtures
+        if: runner.os == 'macOS'
+        run: tests/make-apple-fixtures.sh
+
       # Firefox on Linux decodes H.264 through the system's libavcodec.
       - name: Install codecs
         if: matrix.browser == 'firefox'

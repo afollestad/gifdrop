@@ -11,7 +11,7 @@
 
 Trim, crop, and tune the size, speed and loop, with an estimated file size before you commit. Your video never leaves your device.
 
-It opens whatever your browser can play, which usually means MP4, WebM and MOV.
+It opens whatever your browser can play, which usually means MP4, WebM and MOV. A video with a transparent background keeps it in the GIF, where your browser can decode its transparency: Chrome reads it from WebM, and from HEVC MOV on a Mac, and Safari from HEVC MOV.
 
 ## Development
 
@@ -25,7 +25,7 @@ Tests need Node, and the browser tests also need `ffmpeg` to generate their vide
 
 ```sh
 npm test                        # Unit tests
-npm run fixtures                # Generates the test videos
+npm run fixtures                # Generates the test videos, and on a Mac, HEVC with alpha
 npm run test:e2e -- chrome      # Browser tests: chrome, firefox, safari or ios
 npm run test:footage -- chrome ~/clip.mov   # Tries your own video, which stays on your machine
 ```

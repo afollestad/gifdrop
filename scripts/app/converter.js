@@ -18,19 +18,23 @@ export function sampleSize({ width, height }) {
     return { width: Math.max(1, width >> 1), height: Math.max(1, height >> 1) };
 }
 
-// Captures sampled frames into the encoder and builds its palette.
+// Captures sampled frames into the encoder and builds its palette. Samples are read
+// with transparency, and resolves with whether they had any, so that frames are read
+// with it only then. Transparency found only between samples is lost.
 export async function samplePalette({ video, encoder, times, crop, size, signal, onPaused, onResumed, onStep }) {
-    const grabber = new FrameGrabber(video, { crop, ...sampleSize(size), signal, onPaused, onResumed });
+    const grabber = new FrameGrabber(video, { crop, ...sampleSize(size), alpha: true, signal, onPaused, onResumed });
     for (const index of evenlySpacedIndices(times.length, MAX_PALETTE_SAMPLES)) {
         await encoder.addSample(await grabber.grab(times[index]));
         onStep?.();
     }
-    await encoder.buildPalette();
+    const { transparent } = await encoder.buildPalette();
+    return transparent;
 }
 
 // `plan` is from planFrames. `onProgress` gets `done` and `total` steps and the bytes
-// written so far. Rejects with an AbortError if `signal` aborts, or EncoderError,
-// SeekStalledError or VideoDecodeError otherwise.
+// written so far. Resolves with the GIF and whether it shows any `transparent` pixels.
+// Rejects with an AbortError if `signal` aborts, or EncoderError, SeekStalledError or
+// VideoDecodeError otherwise.
 export async function convert({ video, plan, crop, size, quality, loop, signal, onProgress, onPaused, onResumed }) {
     const { times, delays } = plan;
     const samples = Math.min(times.length, MAX_PALETTE_SAMPLES);
@@ -47,16 +51,17 @@ export async function convert({ video, plan, crop, size, quality, loop, signal, 
     try {
         signal?.throwIfAborted();
         await encoder.start(encoderConfig({ size, quality, loop }));
-        await samplePalette({ video, encoder, times, crop, size, signal, onPaused, onResumed, onStep: step });
+        const alpha = await samplePalette({ video, encoder, times, crop, size, signal, onPaused, onResumed, onStep: step });
 
-        const grabber = new FrameGrabber(video, { crop, ...size, signal, onPaused, onResumed });
+        const grabber = new FrameGrabber(video, { crop, ...size, alpha, signal, onPaused, onResumed });
         for (let i = 0; i < times.length; i++) {
             await encoder.addFrame(await grabber.grab(times[i]), delays[i]);
             step();
         }
 
         const result = await encoder.finish();
-        return { blob: result.blob, frames: result.frames, bytes: result.bytes, width: size.width, height: size.height, stats: grabber.stats };
+        const { blob, frames, bytes, transparent } = result;
+        return { blob, frames, bytes, transparent, width: size.width, height: size.height, stats: grabber.stats };
     } finally {
         signal?.removeEventListener('abort', onAbort);
         encoder.terminate();

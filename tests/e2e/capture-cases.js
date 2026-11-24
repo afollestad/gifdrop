@@ -7,6 +7,11 @@
 // legitimately fail it, in which case it's flagged and its frames aren't checked,
 // and `mustNotSeek` requires that outcome. `mayWarn` is for a video that passes every
 // frame but can still fail that check, as one that barely changes may.
+//
+// `alpha` reads with transparency, and checks the frame number in the alpha too. A
+// browser may decode a format's color but not its alpha, as Safari does VP9's, so
+// every frame coming out opaque is reported as unsupported. A run fails if no format
+// keeps its alpha, so that can't hide alpha being lost everywhere.
 
 const at30 = (t) => Math.floor(t * 30);
 
@@ -21,6 +26,10 @@ export const CAPTURE_CASES = [
     { name: 'long GOP from 10s', src: 'barcode-longgop.mp4', fps: 15, start: 10, end: 12 },
     { name: 'vp9 from 1s', src: 'barcode.webm', fps: 15, start: 1, optionalCodec: true },
     { name: 'hevc from 1s', src: 'barcode-hevc.mp4', fps: 15, start: 1, optionalCodec: true },
+
+    { name: 'vp9 alpha from 1s', src: 'barcode-alpha.webm', fps: 15, start: 1, alpha: true, optionalCodec: true },
+    { name: 'hevc alpha from 1s', src: 'barcode-alpha.mov', fps: 15, start: 1, alpha: true, optionalCodec: true },
+    { name: 'vp9 alpha, large downscale', src: 'barcode-alpha.webm', fps: 15, outputWidth: 96, alpha: true, optionalCodec: true },
 
     { name: 'rerun on the same video, seeking back', src: 'barcode.mp4', fps: 15, start: 1, rerun: true },
     { name: 'h264 0.5x at 30fps (same-frame seeks)', src: 'barcode.mp4', fps: 30, speed: 0.5 },
@@ -46,6 +55,7 @@ export const CAPTURE_CASES = [
     // Accelerated canvases refuse to be read, as in Safari 27.2 on GitHub's macOS 26 runners.
     { name: 'accelerated reads refused', src: 'barcode.mp4', fps: 15, start: 1, refuseAcceleratedReads: true },
     { name: 'accelerated reads refused, large downscale', src: 'barcode.mp4', fps: 15, start: 1, outputWidth: 96, refuseAcceleratedReads: true },
+    { name: 'accelerated reads refused, hevc alpha', src: 'barcode-alpha.mov', fps: 15, start: 1, alpha: true, optionalCodec: true, refuseAcceleratedReads: true },
 ];
 
 export const REJECTED_FILES = [
