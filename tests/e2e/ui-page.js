@@ -428,9 +428,11 @@ const TESTS = {
         assert(!app.doc.querySelector('.stage-preview').classList.contains('has-transparency'), 'no checkerboard behind an opaque video');
     },
 
-    // A browser may decode VP9 but not its alpha, as Safari does, so it tries HEVC too,
-    // on a fresh page. The first frame is checked before the estimate captures anything,
-    // so the checkerboard comes first.
+    // A browser may decode VP9 but not its alpha, as Safari does, or not open VP9 at all,
+    // as the iOS 26 simulator doesn't, so it tries HEVC too, on a fresh page. The wait
+    // outlasts the app's load timeout, so a VP9 that never plays ends in the app's own
+    // error. The first frame is checked before the estimate captures anything, so the
+    // checkerboard comes first.
     async 'a video with transparency shows a checkerboard behind it and its GIF'(first) {
         const tries = [['barcode-alpha.webm', 'video/webm'], ['barcode-alpha.mov', 'video/quicktime']];
         let app = first;
@@ -438,7 +440,9 @@ const TESTS = {
         for (const [i, [name, type]] of tries.entries()) {
             if (i > 0) app = await openApp();
             pick(app, await fixture(name, type));
-            await waitForEditing(app);
+            const screen = () => app.doc.body.dataset.screen;
+            await until(() => screen() === 'editing' || screen() === 'error', 'the editor or an error', 40000);
+            if (screen() === 'error') continue;
             const shown = app.doc.querySelector('.stage-preview');
             const estimated = () => /^About/.test(app.byId('estimate-value').textContent);
             await until(() => shown.classList.contains('has-transparency') || estimated(), 'a checkerboard or an estimate');
