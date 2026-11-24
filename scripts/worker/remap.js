@@ -6,6 +6,15 @@
 // A pixel is compared with the source value of what's showing there now, not with
 // the previous frame, so tiny changes can't add up unnoticed over many frames.
 //
+// A pixel whose lookup cell holds a palette color takes the one nearest the cell's
+// center, without dithering. On a screen recording's flat colors the dither pattern was
+// the most visible error, and gained nothing, and near black Oklab is so steep that
+// the center of pure black's cell was nearer a dark gray. Other pixels still dither, so
+// gradients a small palette can't follow don't band. Skipping by distance instead made
+// Safari's slightly different decodes from one pass to the next flip more pixels
+// between the two, and sizes vary more. The choice depends only on the value, like the
+// dither, so it stays the same from frame to frame.
+//
 // With `alpha`, pixels under the cutoff are transparent, which `composite` holds as
 // TRANSPARENT_INDEX. A frame can leave them as they are, or draw over them, but a
 // pixel showing a color can only become transparent by clearing the whole canvas, so
@@ -18,6 +27,7 @@ const LOOKUP_BITS = 6;
 const LOOKUP_SHIFT = 8 - LOOKUP_BITS;
 const LOOKUP_SIZE = 1 << (LOOKUP_BITS * 3);
 const UNSET = -1;
+const NOT_FLAT = -2;
 
 const BAYER_SIZE = 8;
 const BAYER = [
@@ -54,10 +64,19 @@ function makeThresholds(amplitude) {
     return thresholds;
 }
 
-function nearestIndex(paletteLab, colors, l, a, b) {
-    let best = TRANSPARENT_INDEX + 1;
+function lookupKey(r, g, b) {
+    return (r >> LOOKUP_SHIFT) << (2 * LOOKUP_BITS) | (g >> LOOKUP_SHIFT) << LOOKUP_BITS | (b >> LOOKUP_SHIFT);
+}
+
+function clampChannel(value) {
+    return value < 0 ? 0 : value > 255 ? 255 : value;
+}
+
+// The nearest of the palette indices in `candidates`.
+function nearestIndex(paletteLab, candidates, l, a, b) {
+    let best = candidates[0];
     let bestDistance = Infinity;
-    for (let c = TRANSPARENT_INDEX + 1; c < colors; c++) {
+    for (const c of candidates) {
         const dl = l - paletteLab[c * 3];
         const da = a - paletteLab[c * 3 + 1];
         const db = b - paletteLab[c * 3 + 2];
@@ -73,9 +92,14 @@ function nearestIndex(paletteLab, colors, l, a, b) {
 export class FrameRemapper {
     #width;
     #height;
-    #colors;
     #paletteLab;
+    // Every palette index that's a color, and those in each lookup cell holding any.
+    #colorIndices = [];
+    #cellIndices = new Map();
+    // Per lookup key, the nearest palette index, and that index again where it's in the
+    // cell, so isn't dithered, or NOT_FLAT. #fill sets both.
     #lookup = new Int16Array(LOOKUP_SIZE).fill(UNSET);
+    #flat = new Int16Array(LOOKUP_SIZE);
     #thresholds;
     #toleranceSquared;
     #alpha;
@@ -99,11 +123,17 @@ export class FrameRemapper {
         this.#width = width;
         this.#height = height;
         this.#alpha = alpha;
-        this.#colors = palette.length;
         this.#thresholds = makeThresholds(ditherAmplitude(rmsError, ditherScale));
         this.#toleranceSquared = tolerance * tolerance * WEIGHT_TOTAL;
         this.#paletteLab = new Float64Array(palette.length * 3);
-        palette.forEach(([r, g, b], c) => srgbToOklab(r, g, b, this.#paletteLab, c * 3));
+        palette.forEach(([r, g, b], c) => {
+            srgbToOklab(r, g, b, this.#paletteLab, c * 3);
+            if (c === TRANSPARENT_INDEX) return;
+            this.#colorIndices.push(c);
+            const key = lookupKey(r, g, b);
+            if (!this.#cellIndices.has(key)) this.#cellIndices.set(key, []);
+            this.#cellIndices.get(key).push(c);
+        });
         this.#shownR = new Uint8Array(pixels);
         this.#shownG = new Uint8Array(pixels);
         this.#shownB = new Uint8Array(pixels);
@@ -111,15 +141,17 @@ export class FrameRemapper {
         this.composite = new Uint8Array(pixels);
     }
 
-    #fillLookup(key) {
+    #fill(key) {
         const half = 1 << (LOOKUP_SHIFT - 1);
         const r = ((key >> (2 * LOOKUP_BITS)) << LOOKUP_SHIFT) | half;
         const g = (((key >> LOOKUP_BITS) & ((1 << LOOKUP_BITS) - 1)) << LOOKUP_SHIFT) | half;
         const b = ((key & ((1 << LOOKUP_BITS) - 1)) << LOOKUP_SHIFT) | half;
-        srgbToOklab(r, g, b, this.#lab);
-        const index = nearestIndex(this.#paletteLab, this.#colors, this.#lab[0], this.#lab[1], this.#lab[2]);
+        const lab = this.#lab;
+        srgbToOklab(r, g, b, lab);
+        const inCell = this.#cellIndices.get(key);
+        const index = nearestIndex(this.#paletteLab, inCell ?? this.#colorIndices, lab[0], lab[1], lab[2]);
         this.#lookup[key] = index;
-        return index;
+        this.#flat[key] = inCell ? index : NOT_FLAT;
     }
 
     // Whether a pixel showing a color is transparent in `rgba`.
@@ -137,6 +169,7 @@ export class FrameRemapper {
         const width = this.#width;
         const height = this.#height;
         const lookup = this.#lookup;
+        const flat = this.#flat;
         const thresholds = this.#thresholds;
         const toleranceSquared = this.#toleranceSquared;
         const shownR = this.#shownR;
@@ -178,15 +211,15 @@ export class FrameRemapper {
                     }
                 }
 
-                const threshold = thresholds[row + (x & (BAYER_SIZE - 1))];
-                const dr = r + threshold;
-                const dg = g + threshold;
-                const db = b + threshold;
-                const key = ((dr < 0 ? 0 : dr > 255 ? 255 : dr) >> LOOKUP_SHIFT) << (2 * LOOKUP_BITS)
-                    | ((dg < 0 ? 0 : dg > 255 ? 255 : dg) >> LOOKUP_SHIFT) << LOOKUP_BITS
-                    | ((db < 0 ? 0 : db > 255 ? 255 : db) >> LOOKUP_SHIFT);
-                let index = lookup[key];
-                if (index === UNSET) index = this.#fillLookup(key);
+                const key = lookupKey(r, g, b);
+                if (lookup[key] === UNSET) this.#fill(key);
+                let index = flat[key];
+                if (index === NOT_FLAT) {
+                    const threshold = thresholds[row + (x & (BAYER_SIZE - 1))];
+                    const ditheredKey = lookupKey(clampChannel(r + threshold), clampChannel(g + threshold), clampChannel(b + threshold));
+                    if (lookup[ditheredKey] === UNSET) this.#fill(ditheredKey);
+                    index = lookup[ditheredKey];
+                }
 
                 if (!first && index === composite[p]) {
                     indices[p] = clears ? index : TRANSPARENT_INDEX;

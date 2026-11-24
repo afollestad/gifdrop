@@ -122,6 +122,17 @@ test('dithering breaks up the bands a small palette would leave', () => {
     assert.ok(rowsDiffering > HEIGHT / 2, `${rowsDiffering} rows differ`);
 });
 
+test('colors the palette already has are not dithered, however strong the dither', () => {
+    // Pure black too, where a lookup cell's center is far off in Oklab.
+    const frame = makeFrame((x) => (x < 32 ? [100, 100, 100] : [0, 0, 0]));
+    const palette = [[0, 0, 0], [100, 100, 100], [0, 0, 0], [8, 8, 8], [106, 106, 106]];
+    const remapper = new FrameRemapper({ width: WIDTH, height: HEIGHT, palette, rmsError: 100, ditherScale: 2, tolerance: 5 });
+    remapper.remap(frame);
+    for (let p = 0; p < WIDTH * HEIGHT; p++) {
+        assert.equal(remapper.composite[p], p % WIDTH < 32 ? 1 : 2, `pixel ${p}`);
+    }
+});
+
 test('a change that lands on the color already showing writes nothing', () => {
     const flat = (level) => makeFrame(() => [level, level, level]);
     const histogram = new ColorHistogram();
