@@ -1,18 +1,19 @@
 // What someone has chosen, and what it works out to. Pure, so every combination can
 // be tested without a page.
 import { centeredCrop, clampCrop, fullCrop } from './crop-math.js';
-import { checkOutput, DEFAULTS, SIZE_LIMITS } from './limits.js';
+import { checkOutput, DEFAULTS, defaultLongestEdge, SIZE_LIMITS } from './limits.js';
 import { outputSize, planFrames, widthForLongestEdge } from './plan.js';
 
 export function initialSettings({ videoWidth, videoHeight, duration }) {
     const crop = fullCrop(videoWidth, videoHeight);
+    const width = widthForLongestEdge(crop, defaultLongestEdge(crop));
     return {
         trimStart: 0,
         trimEnd: Math.min(duration, DEFAULTS.trimSeconds),
         aspect: 'original',
         crop,
-        width: widthForLongestEdge(crop, DEFAULTS.longestEdge),
-        requestedWidth: widthForLongestEdge(crop, DEFAULTS.longestEdge),
+        width,
+        requestedWidth: width,
         fps: DEFAULTS.fps,
         speed: DEFAULTS.speed,
         quality: DEFAULTS.quality,

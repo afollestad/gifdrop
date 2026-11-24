@@ -12,7 +12,7 @@ export const QUALITY_PRESETS = {
     high: { colors: 255, tolerance: 2.5, ditherScale: 2 },
 };
 
-export const DEFAULTS = { trimSeconds: 5, longestEdge: 480, fps: 15, speed: 1, quality: 'balanced', loop: 'forever' };
+export const DEFAULTS = { trimSeconds: 5, fps: 15, speed: 1, quality: 'balanced', loop: 'forever' };
 
 export const SIZE_LIMITS = { minWidth: 64, maxWidth: 1280, maxHeight: 1280 };
 
@@ -25,7 +25,16 @@ const WARN_WIDTH = 800;
 const WARN_FPS = 20;
 const WARN_ESTIMATE_BYTES = 15 * 1024 * 1024;
 
+const DEFAULT_LONGEST_EDGE = 480;
+const LARGE_SOURCE_EDGE = 1600;
+
 export const MAX_OUTPUT_BYTES = 256 * 1024 * 1024;
+
+// The longest edge a GIF starts with. A big source, such as a Retina screen recording,
+// loses its text and detail at 480, so it starts at the widest size that doesn't warn.
+export function defaultLongestEdge(crop) {
+    return Math.max(crop.width, crop.height) >= LARGE_SOURCE_EDGE ? WARN_WIDTH : DEFAULT_LONGEST_EDGE;
+}
 
 // `frames` counts the frames captured, before a boomerang adds its return trip.
 // Returns `errors`, which rule out converting, and `warnings`, which don't.
