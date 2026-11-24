@@ -34,6 +34,14 @@ test('checkOutput warns about width and FPS on their own', () => {
     assert.match(checkOutput({ ...OK, fps: 25 }).warnings[0], /20 FPS/);
 });
 
+test('checkOutput warns only beyond the size a video started at', () => {
+    const start = { width: 1234, height: 853 };
+    const big = { ...OK, width: 1234, height: 853, start };
+    assert.deepEqual(checkOutput(big).warnings, []);
+    assert.match(checkOutput({ ...big, width: 1236, height: 854, frames: 30 }).warnings[0], /1234 is plenty/);
+    assert.match(checkOutput({ ...big, frames: 90 }).warnings[0], /a lot of pixels/);
+});
+
 test('every palette leaves room for the transparent entry', () => {
     for (const { colors } of Object.values(QUALITY_PRESETS)) assert.ok(colors <= 255);
 });

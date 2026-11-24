@@ -18,6 +18,7 @@ const SETTINGS = [
     { name: 'small', width: 480, seconds: 5, quality: 'small' },
     { name: 'high', width: 480, seconds: 5, quality: 'high' },
     { name: 'wide high', width: 800, seconds: 5, quality: 'high' },
+    { name: 'full size', width: 2560, seconds: 5, quality: 'balanced' },
     { name: 'narrow', width: 270, seconds: 5, quality: 'balanced' },
     { name: 'boomerang', width: 270, seconds: 3, quality: 'balanced', loop: 'boomerang' },
     { name: '2x speed', width: 270, seconds: 8, quality: 'balanced', speed: 2 },

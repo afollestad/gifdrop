@@ -4,9 +4,14 @@ import { centeredCrop, clampCrop, fullCrop } from './crop-math.js';
 import { checkOutput, DEFAULTS, defaultLongestEdge, SIZE_LIMITS } from './limits.js';
 import { outputSize, planFrames, widthForLongestEdge } from './plan.js';
 
+// The size a crop starts at, before anyone changes the width.
+export function startSize(crop) {
+    return outputSize(crop, widthForLongestEdge(crop, defaultLongestEdge(crop)), SIZE_LIMITS);
+}
+
 export function initialSettings({ videoWidth, videoHeight, duration }) {
     const crop = fullCrop(videoWidth, videoHeight);
-    const width = widthForLongestEdge(crop, defaultLongestEdge(crop));
+    const { width } = startSize(crop);
     return {
         trimStart: 0,
         trimEnd: Math.min(duration, DEFAULTS.trimSeconds),
@@ -101,7 +106,7 @@ export function deriveOutput(settings, { estimateUpperBytes = 0 } = {}) {
     const { trimStart, trimEnd, fps, speed, loop, crop, width } = settings;
     const plan = planFrames({ trimStart, trimEnd, fps, speed });
     const size = outputSize(crop, width, SIZE_LIMITS);
-    const { errors, warnings } = checkOutput({ ...size, frames: plan.times.length, fps, loop, estimateUpperBytes });
+    const { errors, warnings } = checkOutput({ ...size, frames: plan.times.length, fps, loop, estimateUpperBytes, start: startSize(crop) });
     return { plan, size, errors, warnings };
 }
 

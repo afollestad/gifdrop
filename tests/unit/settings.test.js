@@ -10,19 +10,27 @@ test('initialSettings takes the first 5 seconds at a sensible size', () => {
     const settings = initialSettings(LANDSCAPE);
     assert.equal(settings.trimStart, 0);
     assert.equal(settings.trimEnd, 5);
-    assert.equal(settings.width, 800);
+    assert.equal(settings.width, 960);
     assert.deepEqual(settings.crop, { x: 0, y: 0, width: 1920, height: 1080 });
 });
 
 test('initialSettings keeps a portrait video from being tall and heavy', () => {
     assert.equal(initialSettings(PORTRAIT).width, 270);
-    assert.equal(initialSettings({ videoWidth: 1080, videoHeight: 1920, duration: 20 }).width, 450);
+    assert.equal(initialSettings({ videoWidth: 1080, videoHeight: 1920, duration: 20 }).width, 540);
 });
 
-test('initialSettings starts big sources larger, such as Retina screen recordings', () => {
-    assert.equal(initialSettings({ videoWidth: 2468, videoHeight: 1706, duration: 6 }).width, 800);
+test('initialSettings starts big sources at half size, such as Retina screen recordings', () => {
+    assert.equal(initialSettings({ videoWidth: 2468, videoHeight: 1706, duration: 6 }).width, 1234);
     assert.equal(initialSettings({ videoWidth: 1600, videoHeight: 900, duration: 6 }).width, 800);
     assert.equal(initialSettings({ videoWidth: 1599, videoHeight: 900, duration: 6 }).width, 480);
+    assert.equal(initialSettings({ videoWidth: 3840, videoHeight: 2160, duration: 6 }).width, 1280);
+});
+
+test('a big source starts without warnings', () => {
+    for (const [videoWidth, videoHeight] of [[2468, 1706], [3840, 2160], [2160, 3840], [3024, 1964]]) {
+        const { warnings } = deriveOutput(initialSettings({ videoWidth, videoHeight, duration: 6 }));
+        assert.deepEqual(warnings, [], `${videoWidth}x${videoHeight}`);
+    }
 });
 
 test('initialSettings handles a clip shorter than the default trim', () => {
@@ -68,7 +76,7 @@ test('withAspect centers a crop and can only bring the width down', () => {
     const square = withAspect(settings, '1', LANDSCAPE);
     assert.deepEqual(square.crop, { x: 420, y: 0, width: 1080, height: 1080 });
     assert.equal(square.aspect, '1');
-    assert.equal(square.width, 800);
+    assert.equal(square.width, 960);
 
     const wide = withAspect(withOutputWidth(settings, 1280), '0.5625', LANDSCAPE);
     assert.equal(wide.crop.width, 608);
@@ -92,7 +100,7 @@ test('the width recovers once a small crop is undone', () => {
     const settings = withAspect(initialSettings(LANDSCAPE), 'free', LANDSCAPE);
     const small = withCrop(settings, { ...settings.crop, width: 16 }, LANDSCAPE);
     assert.equal(small.width, 16);
-    assert.equal(withAspect(small, 'original', LANDSCAPE).width, 800);
+    assert.equal(withAspect(small, 'original', LANDSCAPE).width, 960);
 });
 
 test('a typed dimension keeps a fixed shape', () => {
@@ -114,8 +122,8 @@ test('moving a fixed shape leaves its size alone', () => {
 });
 
 test('widthLimit respects both output limits', () => {
-    assert.equal(widthLimit({ width: 4000, height: 2000 }), 1280);
-    assert.equal(widthLimit({ width: 1080, height: 1920 }), 720);
+    assert.equal(widthLimit({ width: 6000, height: 2000 }), 2560);
+    assert.equal(widthLimit({ width: 1080, height: 4320 }), 640);
     assert.equal(widthLimit({ width: 320, height: 180 }), 320);
 });
 
@@ -128,7 +136,7 @@ test('aspectNumber reads only real ratios', () => {
 test('deriveOutput gives what the converter needs', () => {
     const { plan, size, errors, warnings } = deriveOutput(initialSettings(LANDSCAPE));
     assert.equal(plan.times.length, 75);
-    assert.deepEqual(size, { width: 800, height: 450 });
+    assert.deepEqual(size, { width: 960, height: 540 });
     assert.deepEqual(errors, []);
     assert.deepEqual(warnings, []);
 });
