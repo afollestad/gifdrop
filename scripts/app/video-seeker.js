@@ -72,8 +72,9 @@ export class VideoSeeker {
     // Resolves with whether a new frame was seen. The first long seek to see none goes
     // somewhere nearby and tries again, since a rare seek on iOS has captured an earlier frame,
     // too briefly for anyone to notice. A video with long gaps misses this way too,
-    // which is why it's only the first. Without frame callbacks or while hidden, nothing
-    // could tell whether the second try worked.
+    // which is why it's only the first. Without frame callbacks every long seek looks like
+    // a miss, so the first is always tried again, as iOS's first-seek miss could otherwise
+    // get through unseen. A hidden tab's timers and callbacks can't be trusted, so it isn't.
     async seek(target) {
         const first = !this.#settled;
         if (first) {
@@ -85,7 +86,7 @@ export class VideoSeeker {
         const missesBefore = this.#longSeekMisses;
         const landed = await this.#seekOnce(target, { first });
         const firstLongMiss = missesBefore === 0 && this.#longSeekMisses === 1;
-        if (!firstLongMiss || !video.requestVideoFrameCallback || document.hidden) return landed;
+        if (!firstLongMiss || document.hidden) return landed;
         await this.#seekOnce(retryWaypoint(target, from), { untilSeeked: true });
         return this.#seekOnce(target);
     }

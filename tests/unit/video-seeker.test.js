@@ -146,12 +146,16 @@ test('a short seek that misses is not tried again, even after a long miss', asyn
     assert.deepEqual(video.seeks, [0.1, 10, 9.5, 10, 10.1]);
 });
 
-test('nothing is tried again where it could not be told to have worked', async () => {
-    const noCallbacks = new FakeVideo();
-    noCallbacks.requestVideoFrameCallback = undefined;
-    await settled(new VideoSeeker(noCallbacks).seek(10));
-    assert.deepEqual(noCallbacks.seeks, [10]);
+test('without frame callbacks, only the first long seek is tried again', async () => {
+    const video = new FakeVideo();
+    video.requestVideoFrameCallback = undefined;
+    const seeker = new VideoSeeker(video);
+    assert.equal(await settled(seeker.seek(10)), false);
+    assert.equal(await settled(seeker.seek(15)), false);
+    assert.deepEqual(video.seeks, [10, 9.5, 10, 15]);
+});
 
+test('nothing is tried again in a hidden tab', async () => {
     const hidden = new FakeVideo();
     globalThis.document.hidden = true;
     await settled(new VideoSeeker(hidden).seek(10));
