@@ -47,9 +47,23 @@
         <div class="hero-sky" aria-hidden="true"></div>
 
         <div class="top-brand">
-            <a class="brand-logo" href="https://af.codes" aria-label="af.codes, by Aidan Follestad">
-                <img src="https://af.codes/images/af.png" alt="" width="32" height="32" decoding="async">
-            </a>
+            <template id="brand-link">
+                <a class="brand-logo" href="https://af.codes" aria-label="af.codes, by Aidan Follestad">
+                    <img src="https://af.codes/images/af.png" alt="" width="32" height="32" decoding="async">
+                </a>
+            </template>
+            <script>
+                // An iOS home screen web app has no links off the site, so there the logo is a
+                // plain mark. The link is a template so it only loads its image when used, and
+                // this is inline so nothing paints first.
+                if (window.navigator.standalone) {
+                    const mark = document.createElement('span');
+                    mark.className = 'brand-mark';
+                    document.currentScript.before(mark);
+                } else {
+                    document.currentScript.before(document.getElementById('brand-link').content);
+                }
+            </script>
         </div>
 
         <div class="top-actions">
@@ -282,6 +296,13 @@
             (<a href="https://www.gnu.org/licenses/gpl-3.0.html">GPL-3.0</a>)
         </p>
     </footer>
+    <script>
+        // The credit stays, as plain text, in an iOS home screen web app.
+        if (window.navigator.standalone) {
+            const credit = document.querySelector('.site-footer a[href="https://af.codes"]');
+            credit.replaceWith(credit.textContent);
+        }
+    </script>
 
     <div class="drop-overlay" id="drop-overlay" hidden>
         <div class="drop-overlay-card">

@@ -164,6 +164,19 @@ h3[tabindex]:focus-visible,
     height: 2rem;
 }
 
+/* The logo for an iOS home screen web app, where it isn't a link: sized and tinted like
+   the theme toggle. The mask is cropped to the logo, which is as tall as the 20px moon icon,
+   20 of its 24 units with the stroke. Its alpha keeps the logo's two blues apart as two
+   shades. */
+.brand-mark {
+    width: 2.5rem;
+    height: 2.5rem;
+    background: currentColor;
+    opacity: .75;
+    -webkit-mask: url("../images/af-mask.png") center / auto calc(20px * 20 / 24) no-repeat;
+    mask: url("../images/af-mask.png") center / auto calc(20px * 20 / 24) no-repeat;
+}
+
 .top-btn {
     display: inline-flex;
     align-items: center;
@@ -1236,7 +1249,8 @@ progress::-moz-progress-bar {
 /* Large enough for a finger, including what's smaller for a mouse. */
 @media (pointer: coarse) {
     .top-btn,
-    .brand-logo {
+    .brand-logo,
+    .brand-mark {
         width: var(--hit);
         height: var(--hit);
         align-items: center;
